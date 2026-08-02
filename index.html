@@ -5,37 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Espacios disponibles · Trend Nails</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Paleta de marca Trend Nails (tomada de trendnails-salon.com):
+     negro #0A0A0A · carbón #1F1F1F · crema #F0EBDB · dorado #E8C468 · taupe #ADA385 */
   :root{
-    --paper:#FBF6F6; --card:#FFFFFF; --ink:#241A1F; --ink-soft:#6B5A61; --ink-faint:#9C8A91;
-    --line:#EADFE1; --line-soft:#F3EBEC;
-    --lacquer:#C33F58; --lacquer-soft:#FBECEF;
-    --jade:#2C6E56; --jade-mid:#3E8A6E; --jade-soft:#E6F1EC;
-    --shadow:0 1px 2px rgba(36,26,31,.06), 0 8px 24px -12px rgba(36,26,31,.18);
+    --paper:#0A0A0A; --card:#1F1F1F; --ink:#F0EBDB; --ink-soft:#ADA385; --ink-faint:#7E7663;
+    --line:#33302A; --line-soft:#262420;
+    --lacquer:#E8C468; --lacquer-soft:rgba(232,196,104,.12);
+    --jade:#7BC9A6; --jade-mid:#5BAF8C; --jade-soft:#20362C;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px -12px rgba(0,0,0,.8);
     --r:14px; --gutter:52px; --colw:132px; --pxmin:1.05;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --paper:#161013; --card:#1F171B; --ink:#F4EAEC; --ink-soft:#B6A2A9; --ink-faint:#7D6A71;
-      --line:#332830; --line-soft:#271E23;
-      --lacquer:#F0879B; --lacquer-soft:#3A1F27;
-      --jade:#7BC9A6; --jade-mid:#5BAF8C; --jade-soft:#20362C;
-      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
-    }
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
     background:var(--paper); color:var(--ink);
-    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-family:"Montserrat",ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     font-size:15px; line-height:1.4; -webkit-text-size-adjust:100%;
   }
   .wrap{max-width:1100px; margin:0 auto; padding:0 14px 46px}
 
   header{padding:18px 0 10px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
   h1{
-    font-family:Georgia,"Times New Roman",serif; font-style:italic; font-weight:400;
-    font-size:26px; margin:0; letter-spacing:-.01em;
+    font-family:"Cormorant Garamond",Georgia,serif; font-style:italic; font-weight:500;
+    font-size:30px; margin:0; letter-spacing:.01em; color:var(--ink);
   }
   .who-view{
     font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
@@ -92,7 +88,7 @@
   }
   .day .dow{font-size:9px; letter-spacing:.1em; text-transform:uppercase; font-weight:700}
   .day .num{font-size:17px; font-weight:600; font-variant-numeric:tabular-nums}
-  .day[aria-pressed="true"]{background:var(--lacquer); border-color:var(--lacquer); color:#fff}
+  .day[aria-pressed="true"]{background:var(--lacquer); border-color:var(--lacquer); color:#0A0A0A}
   .day:focus-visible{outline:2px solid var(--lacquer); outline-offset:2px}
 
   .meta{display:flex; align-items:center; gap:10px; margin:12px 0 8px; flex-wrap:wrap}
