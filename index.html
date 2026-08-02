@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Espacios disponibles · Trend Nails</title>
+<style>
+  :root{
+    --paper:#FBF6F6; --card:#FFFFFF; --ink:#241A1F; --ink-soft:#6B5A61; --ink-faint:#9C8A91;
+    --line:#EADFE1; --line-soft:#F3EBEC;
+    --lacquer:#C33F58; --lacquer-soft:#FBECEF;
+    --jade:#2C6E56; --jade-mid:#3E8A6E; --jade-soft:#E6F1EC;
+    --shadow:0 1px 2px rgba(36,26,31,.06), 0 8px 24px -12px rgba(36,26,31,.18);
+    --r:14px; --gutter:52px; --colw:132px; --pxmin:1.05;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#161013; --card:#1F171B; --ink:#F4EAEC; --ink-soft:#B6A2A9; --ink-faint:#7D6A71;
+      --line:#332830; --line-soft:#271E23;
+      --lacquer:#F0879B; --lacquer-soft:#3A1F27;
+      --jade:#7BC9A6; --jade-mid:#5BAF8C; --jade-soft:#20362C;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:15px; line-height:1.4; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:0 14px 46px}
+
+  header{padding:18px 0 10px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  h1{
+    font-family:Georgia,"Times New Roman",serif; font-style:italic; font-weight:400;
+    font-size:26px; margin:0; letter-spacing:-.01em;
+  }
+  .who-view{
+    font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--lacquer); background:var(--lacquer-soft); padding:4px 10px; border-radius:999px;
+  }
+
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:6px}
+  .field{position:relative; flex:1 1 240px; min-width:220px}
+  label.lbl{
+    display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint); font-weight:700; margin-bottom:5px;
+  }
+  input[type="search"]{
+    width:100%; padding:10px 12px; font:inherit; color:var(--ink);
+    background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+  }
+  input[type="search"]::placeholder{color:var(--ink-faint)}
+  input[type="search"]:focus{outline:2px solid var(--lacquer); outline-offset:1px; border-color:transparent}
+  .options{
+    list-style:none; margin:6px 0 0; padding:6px; position:absolute; left:0; right:0; z-index:40;
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); max-height:min(50vh,360px); overflow-y:auto;
+  }
+  .options[hidden]{display:none}
+  .options li button{
+    width:100%; text-align:left; padding:9px 10px; border:0; border-radius:8px;
+    background:transparent; color:var(--ink); font:inherit; cursor:pointer; display:block;
+  }
+  .options li button:hover,.options li button:focus-visible{background:var(--lacquer-soft); outline:none}
+  .options .dur{display:block; font-size:11px; color:var(--ink-faint)}
+  .empty-opt{padding:10px; color:var(--ink-faint); font-size:13px}
+  .chosen{
+    display:flex; align-items:center; gap:8px; justify-content:space-between;
+    padding:10px 12px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; box-shadow:var(--shadow);
+  }
+  .chosen .nm{font-weight:600; font-size:14px; line-height:1.2}
+  .chosen .dur{font-size:11px; color:var(--ink-faint)}
+  .link{
+    background:none; border:0; padding:3px 2px; font:inherit; font-size:12px; font-weight:700;
+    color:var(--lacquer); cursor:pointer; text-decoration:underline; text-underline-offset:3px; flex:0 0 auto;
+  }
+  .link:focus-visible{outline:2px solid var(--lacquer); outline-offset:2px; border-radius:4px}
+
+  .datebar{margin:8px -14px 0; padding:8px 14px; position:sticky; top:0; z-index:30;
+    background:color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft)}
+  .days{display:flex; gap:7px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+  .days::-webkit-scrollbar{display:none}
+  .day{
+    flex:0 0 auto; min-width:52px; padding:6px 9px; border-radius:11px; cursor:pointer;
+    border:1px solid var(--line); background:var(--card); color:var(--ink-soft);
+    display:flex; flex-direction:column; align-items:center; font:inherit;
+  }
+  .day .dow{font-size:9px; letter-spacing:.1em; text-transform:uppercase; font-weight:700}
+  .day .num{font-size:17px; font-weight:600; font-variant-numeric:tabular-nums}
+  .day[aria-pressed="true"]{background:var(--lacquer); border-color:var(--lacquer); color:#fff}
+  .day:focus-visible{outline:2px solid var(--lacquer); outline-offset:2px}
+
+  .meta{display:flex; align-items:center; gap:10px; margin:12px 0 8px; flex-wrap:wrap}
+  .meta h2{font-size:14px; margin:0; font-weight:600}
+  .stamp{font-size:11px; color:var(--ink-faint); font-variant-numeric:tabular-nums}
+  .meta .link{margin-left:auto}
+
+  /* ------- grilla tipo calendario ------- */
+  .board{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    box-shadow:var(--shadow); overflow:auto; max-height:78vh; position:relative;
+  }
+  .grid{display:grid; min-width:max-content; position:relative}
+  .headrow{position:sticky; top:0; z-index:20; display:grid; background:var(--card);
+    border-bottom:1px solid var(--line)}
+  .headcell{
+    width:var(--colw); padding:9px 8px 7px; text-align:center; border-left:1px solid var(--line-soft);
+  }
+  .headcell .nm{font-weight:700; font-size:13px; letter-spacing:-.01em}
+  .headcell .st{font-size:10px; margin-top:1px; color:var(--ink-faint); font-variant-numeric:tabular-nums}
+  .headcell .st.ok{color:var(--jade)}
+  .corner{width:var(--gutter); position:sticky; left:0; background:var(--card); z-index:21}
+
+  .bodyrow{display:grid}
+  .gutter{
+    width:var(--gutter); position:sticky; left:0; background:var(--card); z-index:10;
+    border-right:1px solid var(--line-soft);
+  }
+  .hourlab{
+    position:absolute; right:6px; transform:translateY(-50%);
+    font-size:10px; color:var(--ink-faint); font-variant-numeric:tabular-nums;
+  }
+  .col{width:var(--colw); position:relative; border-left:1px solid var(--line-soft)}
+  .hline{position:absolute; left:0; right:0; height:1px; background:var(--line-soft)}
+  .now{position:absolute; left:0; right:0; height:2px; background:var(--lacquer); z-index:5; opacity:.8}
+
+  .slotblock{
+    position:absolute; left:5px; right:5px; border-radius:9px; cursor:pointer;
+    background:var(--jade-soft); border:1px solid color-mix(in srgb, var(--jade) 35%, transparent);
+    border-left:4px solid var(--jade-mid);
+    padding:5px 7px; overflow:hidden; text-align:left; font:inherit; color:var(--ink);
+    transition:filter .12s;
+  }
+  .slotblock:hover{filter:brightness(.96)}
+  .slotblock:focus-visible{outline:2px solid var(--jade); outline-offset:1px}
+  .slotblock .t{font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.25}
+  .slotblock .b{font-size:10px; color:var(--jade); font-weight:700; letter-spacing:.05em; text-transform:uppercase}
+
+  .state{
+    text-align:center; padding:38px 18px; color:var(--ink-faint); font-size:14px;
+  }
+  .state strong{display:block; color:var(--ink-soft); font-size:15px; margin-bottom:4px}
+  .state.err{color:var(--lacquer)}
+  .spin{
+    width:20px; height:20px; border-radius:50%; margin:0 auto 10px;
+    border:2px solid var(--line); border-top-color:var(--lacquer); animation:sp .7s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){ .spin{animation-duration:2.4s} }
+
+  footer{margin-top:14px; font-size:11px; color:var(--ink-faint); line-height:1.6}
+  @media (max-width:640px){ :root{--colw:118px} h1{font-size:23px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Espacios disponibles</h1>
+    <span class="who-view" id="viewTag">Equipo completo</span>
+  </header>
+
+  <div class="controls">
+    <div class="field" id="field">
+      <label class="lbl" for="q" id="lbl">Servicio</label>
+      <div id="pickerBox">
+        <input type="search" id="q" placeholder="Escribe el servicio: pedicura, gel tips, retoque…"
+               autocomplete="off" role="combobox" aria-expanded="false" aria-controls="options">
+        <ul class="options" id="options" hidden role="listbox" aria-label="Servicios"></ul>
+      </div>
+      <div class="chosen" id="chosen" hidden>
+        <div>
+          <div class="nm" id="chosenName"></div>
+          <div class="dur" id="chosenDur"></div>
+        </div>
+        <button class="link" id="changeBtn" type="button">Cambiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="datebar"><div class="days" id="days" role="group" aria-label="Elige el día"></div></div>
+
+  <div class="meta" id="meta" hidden>
+    <h2 id="metaTitle"></h2>
+    <span class="stamp" id="stamp"></span>
+    <button class="link" id="refresh" type="button">Actualizar</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="state"><strong>Elige un servicio</strong>Los espacios verdes son huecos libres. Toca uno para reservar.</div>
+  </div>
+
+  <footer>
+    Verde = espacio libre para el servicio elegido (hora de <strong>comienzo</strong>).
+    Sale directo del calendario de GoHighLevel al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
+    Tocar un espacio abre la reserva de ese servicio.
+  </footer>
+</div>
+
+<script>
+const DATA = {"staff":{"BQsJfxc8p7gXwVbXN996":"Rosemarie","3L3JPYqRxqqhMKJMnlDP":"Karelys","J4QowXcetly14EtpDQ2X":"Kristi","YQdq6AMAxLwyq15DMnLn":"Jahaira","ruG3xOXEKMFefGysrUUW":"Delianis","TkM2wOYinB8E1F0cugjf":"Elvys","Y0ntiN7amJipExCQKvws":"Rosa","vBnLPd8Y0paHajwj4CYK":"Daneysha","EoEoF89oUzZMEiPUKfGt":"Brenda"},"services":[{"id":"Hx1Zoy1sawYoo5SZMysC","n":"Acrílico en dedito gordo del pie","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"8X2uRNOG4VCBsWgVwdBy","n":"Aplicación de parafina","d":15,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"EezPB3sITJuJSzrRYoW9","n":"Arreglo de una (1) uña en acrílico","d":30,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"mRJvYqrjm2ua43v5rUFq","n":"Arreglo de uña en gel","d":20,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"qEhkAcZFgWoJQ9FAemJW","n":"Cortes de uñas de pies","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"gPMjdoKgYxBfeiWwcLzG","n":"Diseños elaborado en todas las uñas","d":45,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"qMbHXWozStOI9d8HGdlA","n":"Diseños en relieve (2 uñas) sencillo","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"CZpZF1TjztJIf7p9ZkXN","n":"Diseños en relieve elaborado (todas)","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"ybhkR0zscmcTqtEB5AYV","n":"Diseños personalizados (animados, etc.)","d":60,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"icjh1tVET66Z01537Wuo","n":"Diseños sencillos en dos uñas","d":15,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"g36RaezJv7mpr25eCRpU","n":"Diseños sencillos en todas las uñas","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"aoEm0pl0DZVHJRu5yh8s","n":"Dos tonos en pies","d":80,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"9NrzbWzFWcLi5aoPIoJ5","n":"Esmaltado de gel clear","d":25,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"mHR0N7KD6F0AERAPq6p9","n":"Esmaltado de gel en pies","d":30,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"Ez5uHFB94nW8Y97m5mc1","n":"Esmaltado en gel en manos con Builder","d":80,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"lkL37TRj1Kl1JgFuEALH","n":"Esmaltado regular en manos","d":15,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"qCcAONbuDombNG0Zxp1O","n":"Esmaltado regular en pies","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"iFTIlSN50BZ3Fu840Eyh","n":"Full set baby boomer (ombré)","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"beBgKZovv7Ff64cNySiw","n":"Full set cortas almond/coffin","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"8Dpm5uidS3s3b9WKEp2g","n":"Full set cortas en acrílico de color","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"WTkToNpniEBxpfQvkFSl","n":"Full set cortas en acrílico de color — OFERTA","d":75,"g":"ofGTPF77E8xlplWW9JJ5","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","Y0ntiN7amJipExCQKvws"]},{"id":"nPPZX2YnjM5NvNb8vCjx","n":"Full set de acrílico de color en pies","d":80,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"pBFwHIArqgsyaaXuqy83","n":"Full set dos tonos cortas","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"D92UuxcnIIIiWQkboc8n","n":"Full set en pies sencillo (acrílico regular)","d":60,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"ARFI4hy7jZp1PVOeBwGT","n":"Full set esculturales medianas","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"Bp2loHDTJk54PLL3tuYA","n":"Full set gel tips cortas","d":80,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn"]},{"id":"RV1uhwh4E0KHqkdG7AZl","n":"Full set gel tips largas","d":105,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn"]},{"id":"N0xlx7HF1swl6xG7Z6EI","n":"Full set gel tips medianas","d":90,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn"]},{"id":"LeBl4UWcZ0B5jm0xnklM","n":"Full set largas acrílico de color","d":140,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"dkaIGgCvndiYkh9YQhAn","n":"Full set largas almond/coffin","d":120,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"LADpMPGYHsRHlZlUca1v","n":"Full set medianas almond/coffin","d":90,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"WkSvlK7a52WGdejjwHy0","n":"Full set medianas en acrílico de color","d":110,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"bxQ82vpM4AnSV1LHLYVj","n":"Full set regular cortas con esmaltado en gel","d":30,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"pwPUQqHl0ZUgasIkwURV","n":"Full set sencillo cortas cuadradas","d":75,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"Sxv2mlMxsfWCwyigN1SB","n":"Full set sencillo largas cuadradas","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"GtuYTWr3EAWSJpm9FSe7","n":"Full set sencillo medianas cuadradas","d":100,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"FOe7WXIxIJz6WURq8X73","n":"Full set sencillo XL cuadradas","d":150,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"6vwMRZmxKYCBKviNyZep","n":"Full set XL acrílico de color","d":170,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"DtjP0K6mgYHjrtzEz0JZ","n":"Head Spa","d":120,"g":"PFd221GFOa663WjwOJXz","tm":["vBnLPd8Y0paHajwj4CYK","BQsJfxc8p7gXwVbXN996"]},{"id":"gUqhOrD1oRxDyBILQFCf","n":"Manicura con gel clear","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"eGe9PYICNx0cGoHcFmnH","n":"Manicura en seco con esmaltado en gel","d":60,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"yXEl9MSGuUE3CBJa4osZ","n":"Manicura sencilla con esmalte clear regular","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW"]},{"id":"aBNT8juNjHCiWNyeP77c","n":"Manicura sencilla con esmalte regular","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW"]},{"id":"CBZW9ulf4PCajsdLBPeR","n":"Manicura Spa — OFERTA","d":60,"g":"fT0sXptFVjHBh5NXRncJ","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"avtlL5MRbaddOnvKrhAQ","n":"Manicura spa con esmaltado en gel en color","d":60,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"1x6JRye2SFhLFoOAa87j","n":"Manicura spa con esmaltado regular","d":70,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"cD4dawqBzxW4QbrMdkNX","n":"Manicura y Pedicura — OFERTA","d":120,"g":"ofGTPF77E8xlplWW9JJ5","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"hnpIXeiI3sSkalYU2XuN","n":"Parafina","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"ToQbIYacEvAQgWgKGrKe","n":"Pedicura deluxe","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"22rzDXrEGL04Nkcof6Ia","n":"Pedicura deluxe con esmaltado en gel","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"adP4ePXrCRnUpJEF75yN","n":"Pedicura sencilla","d":60,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"wu9pvYRkckJDgmCy4lqy","n":"Pedicura sencilla con esmaltado de gel","d":90,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"sRwJjdMQ1YsvkERKMAp8","n":"Pedicura spa","d":60,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"Kw76D0PFGGx4vO0IBY5B","n":"Pedicura Spa — OFERTA","d":60,"g":"Ie8nCrazRqN34JtWb6S1","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"Gx3i4M1pv69zqBpi03N1","n":"Pedicura spa con esmaltado en gel","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"dNLv41IF9boLAksKczIP","n":"Remoción de acrílico","d":25,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"kAeKnqoJrT5gIQWsOM2s","n":"Remoción de gel","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"4VT3qJkcujmIjYhqMWpU","n":"Remoción de gel tips","d":20,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"3jV9KtHYF25GsYqjZ5il","n":"Remoción de uñeros","d":15,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"jOVGwRWT4yWWNKY38nPX","n":"Retoque de acrílico de color nuevo","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"CxIvpmCa1vHvCiBhRNxQ","n":"Retoque de acrílico en pies","d":60,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"xicaGPKmYL6fcxfuF5bw","n":"Retoque de acrílico sencillo con esmaltado en gel","d":75,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"n9mew9JrgjOiGgTLTIQj","n":"Retoque de acrílico, gel y parafina — OFERTA","d":70,"g":"fT0sXptFVjHBh5NXRncJ","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","EoEoF89oUzZMEiPUKfGt"]},{"id":"YPqpcCo9nEPnwCHf4PG5","n":"Retoque de dedito gordo en acrílico (ambos)","d":20,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"AuODJ11avkPJ7ls9tVic","n":"Retoque de dos tonos nuevo","d":100,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"RFReaX7pmFEbZyC94zqY","n":"Retoque de gel tip con esmaltado en gel","d":90,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn","EoEoF89oUzZMEiPUKfGt"]},{"id":"7zeNjsutWO7bwiN10qwn","n":"Retoque en dedito gordo (ambos) con gel","d":45,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"egdNu5KMi6vBCQ6kgcb4","n":"Retoque sencillo con esmalte regular","d":60,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"fbVJ7kIyGm8xxrCIGAie","n":"Retoque sencillo de acrílico de color","d":60,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"7tuGa7ycIYAp4tkRScjq","n":"Servicio extra SPA","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]}]};
+const TZ = "America/Puerto_Rico", OFFSET = "-04:00", DAYS_AHEAD = 14;
+const WIDGET = id => `https://link.eraconsultingpr.com/widget/booking/${id}?lang=es`;
+const $ = id => document.getElementById(id);
+const state = { date:null, service:null, reqId:0 };
+
+/* ---------- vista (master o por técnica) ---------- */
+function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+const params = new URLSearchParams(location.search);
+const tParam = params.get("t");
+let TEAM_FILTER = null;               // null = todas
+if(tParam){
+  const hit = Object.entries(DATA.staff).find(([id,n])=>norm(n)===norm(tParam));
+  if(hit){ TEAM_FILTER=[hit[0]]; $("viewTag").textContent = "Vista de "+hit[1]; }
+}
+if(!TEAM_FILTER && params.get("vista")==="admin") $("viewTag").textContent = "Vista administradora";
+
+/* ---------- fechas ---------- */
+function prToday(){
+  const p = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"})
+    .formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function addDays(iso,n){ const d=new Date(iso+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function msRange(iso){ return [Date.parse(iso+"T00:00:00"+OFFSET), Date.parse(iso+"T23:59:59"+OFFSET)]; }
+const DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"], MON=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+function longDate(iso){
+  const t=prToday(); if(iso===t) return "hoy"; if(iso===addDays(t,1)) return "mañana";
+  const d=new Date(iso+"T12:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} de ${MON[d.getUTCMonth()]}`;
+}
+function minOfDay(slot){ const m=slot.match(/T(\d{2}):(\d{2})/); return (+m[1])*60 + (+m[2]); }
+function fmtMin(mins){
+  let h=Math.floor(mins/60), mi=mins%60; const ap=h>=12?"PM":"AM"; h=h%12||12;
+  return `${h}:${String(mi).padStart(2,"0")} ${ap}`;
+}
+
+/* ---------- barra de días ---------- */
+function buildDays(){
+  const today=prToday(); state.date=today; const box=$("days");
+  for(let i=0;i<DAYS_AHEAD;i++){
+    const iso=addDays(today,i); const d=new Date(iso+"T12:00:00Z");
+    const b=document.createElement("button");
+    b.type="button"; b.className="day"; b.setAttribute("aria-pressed",String(i===0));
+    b.innerHTML=`<span class="dow">${i===0?"Hoy":DOW[d.getUTCDay()]}</span><span class="num">${d.getUTCDate()}</span>`;
+    b.addEventListener("click",()=>{ state.date=iso; [...box.children].forEach(c=>c.setAttribute("aria-pressed",String(c===b))); load(); });
+    box.appendChild(b);
+  }
+}
+
+/* ---------- selector de servicio ---------- */
+function svcFor(uid){ return DATA.services.filter(s=>!uid || s.tm.includes(uid)); }
+function renderOptions(term){
+  const ul=$("options"); const t=norm(term.trim());
+  const pool = svcFor(TEAM_FILTER && TEAM_FILTER[0]);
+  const list = t ? pool.filter(s=>norm(s.n).includes(t)) : pool;
+  ul.innerHTML="";
+  if(!list.length){ ul.innerHTML=`<li class="empty-opt">Ningún servicio con “${term}”.</li>`; }
+  else for(const s of list.slice(0,60)){
+    const li=document.createElement("li"); li.setAttribute("role","option");
+    const b=document.createElement("button"); b.type="button";
+    b.innerHTML=`${s.n}<span class="dur">${s.d} min</span>`;
+    b.addEventListener("click",()=>choose(s));
+    li.appendChild(b); ul.appendChild(li);
+  }
+  ul.hidden=false; $("q").setAttribute("aria-expanded","true");
+}
+function choose(s){
+  state.service=s;
+  $("options").hidden=true; $("q").setAttribute("aria-expanded","false");
+  $("pickerBox").hidden=true; $("chosen").hidden=false;
+  $("chosenName").textContent=s.n;
+  $("chosenDur").textContent=`${s.d} min`;
+  try{ localStorage.setItem("tn_esp_service",s.id); }catch(e){}
+  load();
+}
+function reopenPicker(){ $("chosen").hidden=true; $("pickerBox").hidden=false; const q=$("q"); q.value=""; renderOptions(""); q.focus(); }
+
+/* ---------- datos ---------- */
+async function slotsFor(calId, iso, userId){
+  const [a,b]=msRange(iso);
+  let url=`https://backend.leadconnectorhq.com/calendars/${calId}/free-slots`
+        +`?startDate=${a}&endDate=${b}&timezone=${encodeURIComponent(TZ)}&sendSeatsPerSlot=false`;
+  if(userId) url+=`&userId=${userId}`;
+  const r=await fetch(url,{headers:{accept:"application/json"}});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  const j=await r.json(); const day=j[iso];
+  return (day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
+}
+function toRanges(slots){
+  if(!slots.length) return [];
+  const mins=slots.map(minOfDay);
+  let step=Infinity;
+  for(let i=1;i<mins.length;i++) step=Math.min(step,mins[i]-mins[i-1]);
+  if(!isFinite(step)||step<=0) step=5;
+  const out=[]; let start=0;
+  for(let i=1;i<=mins.length;i++){
+    if(i===mins.length || mins[i]-mins[i-1]>step){ out.push({a:mins[start], b:mins[i-1], n:i-start}); start=i; }
+  }
+  return out;
+}
+
+/* ---------- grilla ---------- */
+function drawBoard(cols, durMin){
+  const board=$("board");
+  let lo=Infinity, hi=-Infinity;
+  cols.forEach(c=>c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); }));
+  if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio para este servicio ${longDate(state.date)}.</div>`; return; }
+  lo=Math.floor(lo/60)*60; hi=Math.ceil(hi/60)*60;
+  const pxmin=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pxmin"))||1.05;
+  const H=(hi-lo)*pxmin;
+
+  const gtc=`var(--gutter) repeat(${cols.length}, var(--colw))`;
+  let html=`<div class="grid">`;
+  html+=`<div class="headrow" style="grid-template-columns:${gtc}"><div class="corner"></div>`;
+  for(const c of cols){
+    const tot=c.ranges.reduce((n,r)=>n+r.n,0);
+    html+=`<div class="headcell"><div class="nm">${c.name}</div>
+      <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"sin huecos"}</div></div>`;
+  }
+  html+=`</div>`;
+  html+=`<div class="bodyrow" style="grid-template-columns:${gtc}"><div class="gutter" style="height:${H}px">`;
+  for(let m=lo;m<=hi;m+=60) html+=`<span class="hourlab" style="top:${(m-lo)*pxmin}px">${fmtMin(m)}</span>`;
+  html+=`</div>`;
+  const isToday = state.date===prToday();
+  const nowP=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+  const nowMin=(+nowP.slice(0,2))*60+(+nowP.slice(3,5));
+  for(const c of cols){
+    html+=`<div class="col" style="height:${H}px">`;
+    for(let m=lo;m<=hi;m+=60) html+=`<div class="hline" style="top:${(m-lo)*pxmin}px"></div>`;
+    if(isToday && nowMin>=lo && nowMin<=hi) html+=`<div class="now" style="top:${(nowMin-lo)*pxmin}px"></div>`;
+    for(const r of c.ranges){
+      const top=(r.a-lo)*pxmin, h=Math.max((r.b+durMin-r.a)*pxmin,30);
+      const label = r.a===r.b ? fmtMin(r.a) : `${fmtMin(r.a)} – ${fmtMin(r.b)}`;
+      html+=`<button class="slotblock" style="top:${top}px;height:${h}px"
+        data-cal="${state.service.id}" title="Reservar ${state.service.n} con ${c.name}">
+        <span class="t">${label}</span><span class="b">Reservar →</span></button>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div></div>`;
+  board.innerHTML=html;
+  board.querySelectorAll(".slotblock").forEach(b=>b.addEventListener("click",()=>window.open(WIDGET(b.dataset.cal),"_blank","noopener")));
+}
+
+async function load(){
+  const s=state.service; if(!s) return;
+  const my=++state.reqId;
+  $("meta").hidden=false;
+  $("metaTitle").textContent=`${s.n} · ${longDate(state.date)}`;
+  $("stamp").textContent="";
+  $("board").innerHTML=`<div class="state"><div class="spin"></div>Buscando espacios…</div>`;
+  let team = s.tm.length ? s.tm : Object.keys(DATA.staff);
+  if(TEAM_FILTER) team = team.filter(u=>TEAM_FILTER.includes(u));
+  if(!team.length){
+    $("board").innerHTML=`<div class="state"><strong>Este servicio no lo atiende esta técnica</strong>Elige otro servicio.</div>`;
+    return;
+  }
+  try{
+    const cols=await Promise.all(team.map(async uid=>({
+      uid, name:DATA.staff[uid]||"Técnica", ranges:toRanges(await slotsFor(s.id,state.date,uid))
+    })));
+    if(my!==state.reqId) return;
+    cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
+    drawBoard(cols, s.d);
+    const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
+    $("stamp").textContent=`Consultado a las ${now}`;
+  }catch(err){
+    if(my!==state.reqId) return;
+    const msg = /429/.test(err.message)
+      ? `<strong>Muchas consultas seguidas</strong>Espera unos segundos y toca Actualizar.`
+      : `<strong>No se pudo consultar</strong>Revisa la conexión y toca Actualizar. (${err.message})`;
+    $("board").innerHTML=`<div class="state err">${msg}</div>`;
+  }
+}
+
+/* ---------- arranque ---------- */
+buildDays();
+$("q").addEventListener("input",e=>renderOptions(e.target.value));
+$("q").addEventListener("focus",e=>renderOptions(e.target.value));
+$("changeBtn").addEventListener("click",reopenPicker);
+$("refresh").addEventListener("click",load);
+document.addEventListener("click",e=>{ if(!$("field").contains(e.target)){ $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); } });
+
+let last=null; try{ last=localStorage.getItem("tn_esp_service"); }catch(e){}
+let prev = last && DATA.services.find(s=>s.id===last);
+if(prev && TEAM_FILTER && !prev.tm.includes(TEAM_FILTER[0])) prev=null;
+if(prev) choose(prev);
+</script>
+</body>
+</html>
