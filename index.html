@@ -187,13 +187,13 @@
   </div>
 
   <div class="board" id="board">
-    <div class="state"><strong>Elige un servicio</strong>Los espacios verdes son huecos libres. Toca uno para reservar.</div>
+    <div class="state"><strong>Elige un servicio</strong>Los espacios verdes son disponibles — dale clic a uno y te sale la página para reservar.</div>
   </div>
 
   <footer>
-    Verde = espacio libre para el servicio elegido (hora de <strong>comienzo</strong>).
-    Sale directo del calendario de GoHighLevel al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
-    Tocar un espacio abre la reserva de ese servicio.
+    <strong>Verde = espacio disponible</strong> para el servicio elegido (horas de comienzo).
+    👆 <strong>Dale clic al espacio verde y te sale la página para reservar esa cita.</strong>
+    Sale directo del calendario al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
   </footer>
 </div>
 
@@ -240,11 +240,14 @@ function buildDays(){
   for(let i=0;i<DAYS_AHEAD;i++){
     const iso=addDays(today,i); const d=new Date(iso+"T12:00:00Z");
     const b=document.createElement("button");
-    b.type="button"; b.className="day"; b.setAttribute("aria-pressed",String(i===0));
+    b.type="button"; b.className="day"; b.dataset.iso=iso; b.setAttribute("aria-pressed",String(i===0));
     b.innerHTML=`<span class="dow">${i===0?"Hoy":DOW[d.getUTCDay()]}</span><span class="num">${d.getUTCDate()}</span>`;
-    b.addEventListener("click",()=>{ state.date=iso; [...box.children].forEach(c=>c.setAttribute("aria-pressed",String(c===b))); load(); });
+    b.addEventListener("click",()=>{ state.date=iso; state.userPickedDay=true; selectDayPill(iso); load(); });
     box.appendChild(b);
   }
+}
+function selectDayPill(iso){
+  [...$("days").children].forEach(c=>c.setAttribute("aria-pressed",String(c.dataset.iso===iso)));
 }
 
 /* ---------- selector de servicio ---------- */
@@ -360,10 +363,19 @@ async function load(){
       uid, name:DATA.staff[uid]||"Técnica", ranges:toRanges(await slotsFor(s.id,state.date,uid))
     })));
     if(my!==state.reqId) return;
+    const total = cols.reduce((n,c)=>n+c.ranges.reduce((x,r)=>x+r.n,0),0);
+    // Si el día actual está lleno y la persona no eligió día a mano, saltar al próximo día con espacio
+    if(total===0 && !state.userPickedDay && (state.autoScan||0)<6){
+      state.autoScan=(state.autoScan||0)+1;
+      state.date=addDays(state.date,1);
+      selectDayPill(state.date);
+      return load();
+    }
+    const scanned = state.autoScan; state.autoScan=0;
     cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
     drawBoard(cols, s.d);
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
-    $("stamp").textContent=`Consultado a las ${now}`;
+    $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
   }catch(err){
     if(my!==state.reqId) return;
     const msg = /429/.test(err.message)
@@ -378,12 +390,17 @@ buildDays();
 $("q").addEventListener("input",e=>renderOptions(e.target.value));
 $("q").addEventListener("focus",e=>renderOptions(e.target.value));
 $("changeBtn").addEventListener("click",reopenPicker);
-$("refresh").addEventListener("click",load);
+$("refresh").addEventListener("click",()=>{ if(state.service) load(); else reopenPicker(); });
 document.addEventListener("click",e=>{ if(!$("field").contains(e.target)){ $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); } });
 
 let last=null; try{ last=localStorage.getItem("tn_esp_service"); }catch(e){}
 let prev = last && DATA.services.find(s=>s.id===last);
 if(prev && TEAM_FILTER && !prev.tm.includes(TEAM_FILTER[0])) prev=null;
+if(!prev){
+  // Primera visita: arrancar con un servicio popular para que siempre se vea la grilla
+  const pool = svcFor(TEAM_FILTER && TEAM_FILTER[0]);
+  prev = pool.find(s=>/Full set cortas en acr/i.test(s.n) && !/OFERTA/i.test(s.n)) || pool[0];
+}
 if(prev) choose(prev);
 </script>
 </body>
