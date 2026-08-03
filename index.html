@@ -68,6 +68,7 @@
     padding:10px 12px; background:var(--card); border:1px solid var(--line);
     border-radius:12px; box-shadow:var(--shadow);
   }
+  .chosen[hidden]{display:none}   /* display:flex anula el atributo hidden si no se declara */
   .chosen .nm{font-weight:600; font-size:14px; line-height:1.2}
   .chosen .dur{font-size:11px; color:var(--ink-faint)}
   .link{
@@ -538,7 +539,8 @@ else{
     cTimer=setTimeout(()=>searchClienta(v),400);
   });
   $("cClear").addEventListener("click",()=>{
-    state.clienta=null; $("cChosen").hidden=true; $("cPickerBox").hidden=false; $("cq").value="";
+    state.clienta=null; $("cChosen").hidden=true; $("cPickerBox").hidden=false;
+    $("cName").textContent=""; $("cq").value=""; $("cOptions").hidden=true; $("cq").focus();
   });
 }
 async function searchClienta(q){
