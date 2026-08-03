@@ -63,6 +63,14 @@
   .options li button:hover,.options li button:focus-visible{background:var(--lacquer-soft); outline:none}
   .options .dur{display:block; font-size:11px; color:var(--ink-faint)}
   .empty-opt{padding:10px; color:var(--ink-faint); font-size:13px}
+  .new-cl{color:var(--lacquer) !important; font-weight:700}
+  .nf{display:flex; flex-direction:column; gap:8px; padding:6px}
+  .nf input{padding:9px 10px; font:inherit; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:10px}
+  .nf input:focus{outline:2px solid var(--lacquer); outline-offset:1px; border-color:transparent}
+  .nf-row{display:flex; gap:8px}
+  .nf-row .btn-go{flex:1}
+  .nf-msg{font-size:12px; color:var(--lacquer); min-height:1em}
   .chosen{
     display:flex; align-items:center; gap:8px; justify-content:space-between;
     padding:10px 12px; background:var(--card); border:1px solid var(--line);
@@ -232,6 +240,19 @@
       <div id="cPickerBox">
         <input type="search" id="cq" placeholder="Nombre o teléfono de la clienta…" autocomplete="off">
         <ul class="options" id="cOptions" hidden role="listbox" aria-label="Clientas"></ul>
+        <div class="options" id="cNewForm" hidden>
+          <div class="nf">
+            <input id="nfFn" placeholder="Nombre *" autocomplete="off">
+            <input id="nfLn" placeholder="Apellido" autocomplete="off">
+            <input id="nfPh" placeholder="Teléfono * (ej. 7875551234)" inputmode="tel" autocomplete="off">
+            <input id="nfEm" placeholder="Correo (opcional)" inputmode="email" autocomplete="off">
+            <div class="nf-row">
+              <button class="btn-go" id="nfSave" type="button">Guardar clienta</button>
+              <button class="btn-quiet" id="nfNo" type="button">Cancelar</button>
+            </div>
+            <div class="nf-msg" id="nfMsg"></div>
+          </div>
+        </div>
       </div>
       <div class="chosen" id="cChosen" hidden>
         <div>
@@ -734,34 +755,51 @@ else{
   });
   $("cClear").addEventListener("click",()=>{
     state.clienta=null; $("cChosen").hidden=true; $("cPickerBox").hidden=false;
-    $("cName").textContent=""; $("cq").value=""; $("cOptions").hidden=true; $("cq").focus();
+    $("cName").textContent=""; $("cq").value=""; $("cOptions").hidden=true;
+    $("cNewForm").hidden=true; $("cq").focus();
   });
+  $("nfSave").addEventListener("click",saveNewClienta);
+  $("nfNo").addEventListener("click",()=>{ $("cNewForm").hidden=true; $("cq").focus(); });
 }
 let cReqId=0;
 const cCache={};   // búsquedas ya hechas: repetir la misma es instantáneo
+/* Doble intento contra la lentitud de Apps Script: si a los 2.5 s no ha contestado,
+   se dispara una SEGUNDA consulta idéntica y gana la que llegue primero. Tope: 12 s.
+   (Solo para búsquedas — nunca para reservar, que crearía citas dobles.) */
+function fetchHedged(url, hedgeMs, timeoutMs){
+  hedgeMs=hedgeMs||2500; timeoutMs=timeoutMs||12000;
+  return new Promise((res,rej)=>{
+    let done=false, fails=0;
+    const finish=(fn,v)=>{ if(!done){ done=true; clearTimeout(h); clearTimeout(k); fn(v); } };
+    const go=()=>fetch(url).then(r=>r.json()).then(j=>finish(res,j))
+      .catch(e=>{ if(++fails>=2) finish(rej,e); });
+    go();
+    const h=setTimeout(go,hedgeMs);
+    const k=setTimeout(()=>finish(rej,new Error("tiempo agotado")),timeoutMs);
+  });
+}
 async function searchClienta(q, reintento){
   const my=++cReqId;
   const ul=$("cOptions");
   if(cCache[q]){ renderClientas(cCache[q]); return; }
   ul.innerHTML=`<li class="empty-opt">Buscando…</li>`; ul.hidden=false;
   try{
-    const r=await fetch(LOOKUP+"?q="+encodeURIComponent(q));
-    const j=await r.json();
+    const j=await fetchHedged(LOOKUP+"?q="+encodeURIComponent(q));
     if(my!==cReqId) return;   // ya hay una búsqueda más nueva — no pisar su resultado
     cCache[q]=j.matches||[];
     renderClientas(cCache[q]);
   }catch(e){
     if(my!==cReqId) return;
-    if(!reintento){ setTimeout(()=>{ if(my===cReqId) searchClienta(q, true); }, 900); return; }
+    if(!reintento){ setTimeout(()=>{ if(my===cReqId) searchClienta(q, true); }, 700); return; }
     ul.innerHTML=`<li class="empty-opt">No se pudo buscar ahora (${e.message}).</li>`;
+    appendNewOption(ul);
   }
 }
 function renderClientas(list){
   const ul=$("cOptions");
   ul.innerHTML=""; ul.hidden=false;
   if(!list.length){
-    ul.innerHTML=`<li class="empty-opt">No aparece. Se puede reservar igual y escribir los datos allá.</li>`;
-    return;
+    ul.innerHTML=`<li class="empty-opt">No aparece en la base de datos.</li>`;
   }
   for(const m of list){
     const li=document.createElement("li"); li.setAttribute("role","option");
@@ -775,6 +813,53 @@ function renderClientas(list){
     });
     li.appendChild(b); ul.appendChild(li);
   }
+  appendNewOption(ul);
+}
+function appendNewOption(ul){
+  const li=document.createElement("li");
+  const b=document.createElement("button"); b.type="button"; b.className="new-cl";
+  b.textContent="➕ Clienta nueva — crear y usar";
+  b.addEventListener("click",openNewClienta);
+  li.appendChild(b); ul.appendChild(li);
+}
+/* ---------- alta de clienta nueva ---------- */
+function openNewClienta(){
+  $("cOptions").hidden=true;
+  const q=$("cq").value.trim(), digits=q.replace(/\D/g,"");
+  if(digits.length>=7 && digits.length>=q.replace(/\s/g,"").length-2){
+    $("nfPh").value=q; $("nfFn").value=""; $("nfLn").value="";
+  }else{
+    const parts=q.split(/\s+/);
+    $("nfFn").value=parts[0]||""; $("nfLn").value=parts.slice(1).join(" "); $("nfPh").value="";
+  }
+  $("nfEm").value=""; $("nfMsg").textContent="";
+  $("cNewForm").hidden=false; $("nfFn").focus();
+}
+async function saveNewClienta(){
+  const fn=$("nfFn").value.trim(), ln=$("nfLn").value.trim(), em=$("nfEm").value.trim();
+  let d=$("nfPh").value.replace(/\D/g,"");
+  if(d.length===11 && d[0]==="1") d=d.slice(1);
+  if(!fn){ $("nfMsg").textContent="Falta el nombre."; return; }
+  if(d.length!==10){ $("nfMsg").textContent="Teléfono completo con área, ej. 7875551234."; return; }
+  if(em && !/^\S+@\S+\.\S+$/.test(em)){ $("nfMsg").textContent="Ese correo no luce válido."; return; }
+  const ph="+1"+d;
+  const btn=$("nfSave"); btn.disabled=true; btn.textContent="Guardando…"; $("nfMsg").textContent="";
+  try{
+    const u=LOOKUP+`?action=newcontact&fn=${encodeURIComponent(fn)}&ln=${encodeURIComponent(ln)}`+
+      `&ph=${encodeURIComponent(ph)}&em=${encodeURIComponent(em)}`;
+    const r=await fetch(u); const j=await r.json();
+    if(j.ok){
+      state.clienta={id:j.id, fn:j.fn, ln:j.ln, ph:j.ph, em:j.em};
+      for(const k in cCache) delete cCache[k];   // que las próximas búsquedas la encuentren
+      $("cNewForm").hidden=true; $("cPickerBox").hidden=true; $("cChosen").hidden=false;
+      $("cName").textContent=((j.fn||"")+" "+(j.ln||"")).trim()+(j.nuevo===false?" · ya existía, usando su ficha":"");
+    }else if(j.matches!==undefined){
+      $("nfMsg").textContent="Falta publicar la actualización del sistema — avísale a Elvys.";
+    }else{
+      $("nfMsg").textContent="No se pudo: "+(j.error||"error");
+    }
+  }catch(e){ $("nfMsg").textContent="Sin conexión. Intenta otra vez."; }
+  btn.disabled=false; btn.textContent="Guardar clienta";
 }
 // Calentar el Apps Script al abrir la página Y dejar listo el detalle de hoy en caché
 fetchBusy(prToday()).catch(()=>{});
