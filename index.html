@@ -335,6 +335,20 @@ function teamIds(){                       // técnicas que hacen TODOS los servi
   }
   return t || [];
 }
+/* Vista general (sin servicio elegido): la disponibilidad se pinta con el servicio más corto
+   que atiende todo el equipo (15 min) — así el verde es "la técnica está libre". */
+const GENERAL_SVC = DATA.services.find(s=>s.id==="qEhkAcZFgWoJQ9FAemJW") || DATA.services[0];
+function svcByName(n){ n=n.trim(); return DATA.services.find(s=>s.n===n); }
+function citaPrice(k){                    // $ estimado de una cita del día
+  if(k.t && k.t.includes(" + ")){         // multi-servicio del tablero: sumar cada trozo
+    let s=0;
+    for(const part of k.t.split(" + ")){ const sv=svcByName(part); if(sv && PRICE[sv.id]) s+=PRICE[sv.id]; }
+    if(s) return s;
+  }
+  if(k.c && PRICE[k.c]) return PRICE[k.c];                    // por el calendario de la cita
+  if(k.t){ const sv=svcByName(k.t); if(sv) return PRICE[sv.id]||0; }
+  return 0;
+}
 
 /* ---------- vista (master o por técnica) ---------- */
 function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
@@ -412,7 +426,9 @@ function choose(s){
   if(state.addMode){ if(!state.services.some(x=>x.id===s.id)) state.services.push(s); }
   else state.services=[s];
   state.addMode=false;
-  $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); $("q").value="";
+  const q=$("q");
+  $("options").hidden=true; q.setAttribute("aria-expanded","false"); q.value="";
+  q.placeholder="Escribe el servicio: pedicura, gel tips, retoque…";
   $("pickerBox").hidden=true; $("chosen").hidden=false;
   renderChips();
   try{ localStorage.setItem("tn_esp_service",state.services[0].id); }catch(e){}
@@ -453,6 +469,7 @@ function reopenPicker(){
   state.services=[]; state.addMode=false;
   $("chosen").hidden=true; $("pickerBox").hidden=false;
   const q=$("q"); q.value=""; renderOptions(""); q.focus();
+  load();   // sin servicio elegido, la grilla vuelve a la vista general del día
 }
 
 /* ---------- datos ---------- */
@@ -510,7 +527,7 @@ async function fetchBusy(iso){
         .map(x=>{
           let w=(x.w||"").trim(), t=(x.t||"").trim();
           if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
-          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t};
+          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||""};
         })
         .filter(x=>x.b>x.a)
         .sort((p,q)=>p.a-q.a);
@@ -541,7 +558,7 @@ function drawBoard(cols, durMin, busyMap){
     c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); });
     ((busyMap&&busyMap[c.uid])||[]).forEach(k=>{ lo=Math.min(lo,k.a); hi=Math.max(hi,k.b); });
   });
-  if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio ${state.services.length>1?"donde quepan estos servicios seguidos":"para este servicio"} ${longDate(state.date)}.</div>`; return; }
+  if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>${state.generalView?`No hay espacios libres ${longDate(state.date)}.`:`Nadie tiene espacio ${state.services.length>1?"donde quepan estos servicios seguidos":"para este servicio"} ${longDate(state.date)}.`}</div>`; return; }
   lo=Math.floor(lo/60)*60; hi=Math.ceil(hi/60)*60;
   const pxmin=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pxmin"))||1.05;
   const H=(hi-lo)*pxmin;
@@ -551,19 +568,21 @@ function drawBoard(cols, durMin, busyMap){
   html+=`<div class="headrow" style="grid-template-columns:${gtc}"><div class="corner"></div>`;
   for(const c of cols){
     const tot=c.ranges.reduce((n,r)=>n+r.n,0);
-    const nCitas=((busyMap&&busyMap[c.uid])||[]).filter(k=>k.k==="cita").length;
+    const citas=((busyMap&&busyMap[c.uid])||[]).filter(k=>k.k==="cita");
+    const dinero=citas.reduce((n,k)=>n+citaPrice(k),0);
     html+=`<div class="headcell"><div class="nm">${c.name}</div>
       <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"ocupada / fuera de turno"}</div>
-      ${busyMap?`<div class="ct">${nCitas} ${nCitas===1?"reserva":"reservas"}</div>`:""}</div>`;
+      ${busyMap?`<div class="ct">${citas.length} ${citas.length===1?"reserva":"reservas"}${dinero?` · ≈$${dinero}`:""}</div>`:""}</div>`;
   }
   html+=`</div>`;
-  // total de reservas del día: equipo completo en la vista maestra, individual en la vista por técnica
+  // total del día: equipo completo en la vista maestra, individual en la vista por técnica
   const totBadge=$("totCitas");
   if(busyMap){
     const uids = TEAM_FILTER ? TEAM_FILTER : Object.keys(busyMap);
-    let nTot=0; for(const u of uids) nTot += ((busyMap[u])||[]).filter(k=>k.k==="cita").length;
+    let nTot=0, mTot=0;
+    for(const u of uids) for(const k of (busyMap[u]||[])) if(k.k==="cita"){ nTot++; mTot+=citaPrice(k); }
     totBadge.hidden=false;
-    totBadge.textContent=`🗓 ${nTot} ${nTot===1?"reserva":"reservas"} ${longDate(state.date)}`;
+    totBadge.textContent=`🗓 ${nTot} ${nTot===1?"reserva":"reservas"}${mTot?` · ≈$${mTot}`:""} ${longDate(state.date)}`;
   }else totBadge.hidden=true;
   const isToday = state.date===prToday();
   const nowP=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
@@ -614,8 +633,8 @@ function drawBoard(cols, durMin, busyMap){
       const top=(r.a-lo)*pxmin, h=Math.max((r.b+durMin-r.a)*pxmin,30);
       const label = r.a===r.b ? fmtMin(r.a) : `${fmtMin(r.a)} – ${fmtMin(r.b)}`;
       html+=`<button class="slotblock" style="top:${top}px;height:${h}px"
-        data-ci="${ci}" data-ri="${ri}" title="Reservar ${svcTitle()} con ${c.name}">
-        <span class="t">${label}</span><span class="b">Reservar →</span></button>`;
+        data-ci="${ci}" data-ri="${ri}" title="${state.generalView?`${c.name} está libre — elige un servicio para reservar`:`Reservar ${svcTitle()} con ${c.name}`}">
+        <span class="t">${label}</span><span class="b">${state.generalView?"Libre":"Reservar →"}</span></button>`;
     }
     html+=`</div>`;
   }
@@ -629,6 +648,14 @@ function drawBoard(cols, durMin, busyMap){
 /* ---------- reserva directa desde el tablero ---------- */
 let bkSel=null;
 function openBooking(ci,ri){
+  if(state.generalView){
+    // vista general: para reservar hay que elegir el servicio primero
+    $("chosen").hidden=true; $("pickerBox").hidden=false;
+    const q=$("q"); q.placeholder="Elige el servicio para reservar esa hora…";
+    renderOptions(""); q.focus();
+    window.scrollTo({top:0, behavior:"smooth"});
+    return;
+  }
   const c=state.cols[ci], r=c.ranges[ri], svcs=state.services, cl=state.clienta;
   if(!cl || !cl.id){
     // sin clienta elegida: abrir el widget (con varios servicios, el Menú de Servicios)
@@ -679,14 +706,16 @@ $("bbGo").addEventListener("click",async ()=>{
 });
 
 async function load(){
-  const svcs=state.services; if(!svcs.length) return;
+  const general = !state.services.length;          // sin servicio elegido: vista general del día
+  state.generalView = general;
+  const svcs = general ? [GENERAL_SVC] : state.services;
   const my=++state.reqId;
   $("bookbar").hidden=true; bkSel=null;   // al recargar/cambiar de día, cerrar la barra para no cruzar días
   $("meta").hidden=false;
-  $("metaTitle").textContent=`${svcTitle()} · ${longDate(state.date)}`;
+  $("metaTitle").textContent=`${general?"Disponibilidad del equipo":svcTitle()} · ${longDate(state.date)}`;
   $("stamp").textContent="";
   $("board").innerHTML=`<div class="state"><div class="spin"></div>Buscando espacios…</div>`;
-  let team = teamIds();
+  let team = general ? (GENERAL_SVC.tm.length?GENERAL_SVC.tm.slice():Object.keys(DATA.staff)) : teamIds();
   if(TEAM_FILTER) team = team.filter(u=>TEAM_FILTER.includes(u));
   if(!team.length){
     $("board").innerHTML=`<div class="state"><strong>${svcs.length>1?"Ninguna técnica hace estos servicios juntos":"Este servicio no lo atiende esta técnica"}</strong>${svcs.length>1?"Quita alguno de la lista.":"Elige otro servicio."}</div>`;
@@ -722,7 +751,8 @@ async function load(){
     if(my!==state.reqId) return;
     const total = cols.reduce((n,c)=>n+c.ranges.reduce((x,r)=>x+r.n,0),0);
     // Si el día actual está lleno y la persona no eligió día a mano, saltar al próximo día con espacio
-    if(total===0 && !state.userPickedDay && (state.autoScan||0)<6){
+    // (en la vista general NO se salta: ver el día lleno con sus citas es justamente la gracia)
+    if(!general && total===0 && !state.userPickedDay && (state.autoScan||0)<6){
       state.autoScan=(state.autoScan||0)+1;
       state.date=addDays(state.date,1);
       selectDayPill(state.date);
@@ -733,8 +763,9 @@ async function load(){
     cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
     // pintar YA con lo que haya (el rojo genérico) y encender las etiquetas cuando lleguen —
     // el detalle de citas/bloqueos tarda unos segundos y no debe frenar la grilla
-    drawBoard(cols, totDur(), busyCached(state.date));
-    busyP.then(bm=>{ if(bm && my===state.reqId) drawBoard(cols, totDur(), bm); });
+    const durM = general ? GENERAL_SVC.d : totDur();
+    drawBoard(cols, durM, busyCached(state.date));
+    busyP.then(bm=>{ if(bm && my===state.reqId) drawBoard(cols, durM, bm); });
     state.loadedAt = Date.now();
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
@@ -756,7 +787,7 @@ $("addBtn").addEventListener("click",addSvc);
 $("refresh").addEventListener("click",()=>{
   // "Actualizar" = datos frescos de verdad: olvidar lo cacheado de este día
   slotCacheDrop(state.date); delete busyCache[state.date];
-  if(state.services.length) load(); else reopenPicker();
+  load();
 });
 document.addEventListener("click",e=>{
   if(!$("field").contains(e.target)){ $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); }
@@ -882,8 +913,9 @@ async function saveNewClienta(){
   }catch(e){ $("nfMsg").textContent="Sin conexión. Intenta otra vez."; }
   btn.disabled=false; btn.textContent="Guardar clienta";
 }
-// Calentar el Apps Script al abrir la página Y dejar listo el detalle de hoy en caché
-fetchBusy(prToday()).catch(()=>{});
+// Al abrir: vista general del día completo (libre / citas / bloqueos / fuera de turno).
+// De paso calienta el Apps Script y deja el detalle de hoy en caché.
+load();
 // Si la pestaña estuvo dormida (celular), refrescar para no enseñar horas viejas
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible" && state.services.length
