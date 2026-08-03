@@ -173,6 +173,9 @@
   .busyblock .what{display:block; font-size:9.5px; color:var(--ink-faint);
     white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
   .busyblock.cita{background:rgba(229,72,77,.13); border-color:rgba(229,72,77,.28); border-left:4px solid #E5484D}
+  .busyblock.cita[data-eid]{pointer-events:auto; cursor:pointer; transition:filter .12s}
+  .busyblock.cita[data-eid]:hover{filter:brightness(1.25)}
+  .btn-go.danger{background:#E5484D; color:#fff}
   .busyblock.bloq{background:rgba(232,196,104,.09); border-color:rgba(232,196,104,.28); border-left:4px solid var(--lacquer)}
   .busyblock.bloq .who{color:var(--lacquer)}
 
@@ -290,6 +293,8 @@
     (el verde muestra solo los espacios donde cabe todo seguido con la misma técnica).
     👆 <strong>Dale clic al espacio verde:</strong> si elegiste la clienta arriba, confirmas la hora y la cita
     queda creada al instante (le llega su confirmación); si no, se abre la página de reserva.
+    🗑 <strong>Para cancelar una cita:</strong> toca su bloque rojo y confirma — queda cancelada en el sistema
+    y el espacio vuelve a verde.
     Sale directo del calendario al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
   </footer>
 
@@ -527,7 +532,7 @@ async function fetchBusy(iso){
         .map(x=>{
           let w=(x.w||"").trim(), t=(x.t||"").trim();
           if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
-          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||""};
+          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||"", id:x.id||""};
         })
         .filter(x=>x.b>x.a)
         .sort((p,q)=>p.a-q.a);
@@ -605,12 +610,13 @@ function drawBoard(cols, durMin, busyMap){
     for(const [a,b] of spans){ if(a>cursor) busy.push([cursor,a]); cursor=Math.max(cursor,b); }
     if(cursor<hi) busy.push([cursor,hi]);
     const knowns = ((busyMap&&busyMap[c.uid])||[]);
-    const blk=(a,b,cls,l1,l2)=>{
+    const blk=(a,b,cls,l1,l2,x)=>{
       const bh=(b-a)*pxmin; if(bh<6) return "";
       let inner="";
       if(bh>=16 && l1) inner+= cls==="off" ? `<span class="lb">${l1}</span>` : `<span class="who">${esc(l1)}</span>`;
       if(bh>=34 && l2) inner+=`<span class="what">${esc(l2)}</span>`;
-      return `<div class="busyblock ${cls}" style="top:${(a-lo)*pxmin}px;height:${bh}px">${inner}</div>`;
+      const attrs = (x&&x.eid) ? ` data-eid="${esc(x.eid)}" data-w="${esc(x.w)}" data-a="${x.a}" data-b="${x.b}" data-cn="${esc(x.cn)}" title="Toca para cancelar esta cita" role="button" tabindex="0"` : "";
+      return `<div class="busyblock ${cls}"${attrs} style="top:${(a-lo)*pxmin}px;height:${bh}px">${inner}</div>`;
     };
     for(const [a,b] of busy){
       if(!knowns.length){ html+=blk(a,b,"off", busyMap?"Fuera de turno":"Ocupado",""); continue; }
@@ -622,7 +628,8 @@ function drawBoard(cols, durMin, busyMap){
         html+=blk(Math.max(ka,cur), kb,
           k.k==="bloqueo"?"bloq":"cita",
           k.k==="bloqueo"?(k.t||k.w||"Bloqueado"):(k.w||k.t||"Cita"),
-          k.k==="bloqueo"?"Hora bloqueada":k.t);
+          k.k==="bloqueo"?"Hora bloqueada":k.t,
+          (k.k==="cita"&&k.id)?{eid:k.id, w:k.w||k.t||"Clienta", a:k.a, b:k.b, cn:c.name}:null);
         cur=Math.max(cur,kb);
       }
       if(cur<b) html+=blk(cur,b,"off","Fuera de turno","");
@@ -643,10 +650,47 @@ function drawBoard(cols, durMin, busyMap){
   board.innerHTML=html;
   board.scrollTop=st; board.scrollLeft=sl;
   board.querySelectorAll(".slotblock").forEach(b=>b.addEventListener("click",()=>openBooking(+b.dataset.ci,+b.dataset.ri)));
+  board.querySelectorAll(".busyblock.cita[data-eid]").forEach(el=>el.addEventListener("click",()=>openCancel(el.dataset)));
 }
 
 /* ---------- reserva directa desde el tablero ---------- */
-let bkSel=null;
+let bkSel=null, cancelSel=null;
+function openCancel(d){
+  // tocar una cita roja: confirmar y cancelar (queda cancelada en GHL, no borrada)
+  bkSel=null; cancelSel={eid:d.eid, w:d.w, cn:d.cn, a:+d.a, b:+d.b, date:state.date};
+  $("bbHora").style.display="none";
+  $("bbInfo").innerHTML=`¿Cancelar la cita de <strong>${esc(d.w)}</strong> · ${fmtMin(+d.a)}–${fmtMin(+d.b)} `+
+    `con <strong>${esc(d.cn)}</strong> · ${longDate(state.date)}?`;
+  const btn=$("bbGo"); btn.disabled=false; btn.classList.add("danger"); btn.textContent="Sí, cancelar la cita";
+  $("bookbar").hidden=false;
+}
+async function doCancelUI(){
+  const cs=cancelSel; if(!cs) return;
+  const btn=$("bbGo"); btn.disabled=true; btn.textContent="Cancelando…";
+  try{
+    const r=await fetch(LOOKUP+"?action=cancel&eventId="+encodeURIComponent(cs.eid));
+    const j=await r.json();
+    if(j.ok){
+      btn.textContent="✅ Cita cancelada";
+      $("bbInfo").innerHTML=`<strong>Cancelada.</strong> El espacio de ${esc(cs.w)} con ${esc(cs.cn)} quedó libre.`;
+      slotCacheDrop(cs.date); delete busyCache[cs.date];
+      setTimeout(()=>{ closeBar(); load(); },2200);
+    }else if(j.matches!==undefined){
+      btn.disabled=false; btn.textContent="Sí, cancelar la cita";
+      $("bbInfo").innerHTML=`<strong>Falta publicar la actualización del sistema</strong> — avísale a Elvys.`;
+    }else{
+      btn.disabled=false; btn.textContent="Sí, cancelar la cita";
+      $("bbInfo").innerHTML=`<strong>No se pudo cancelar:</strong> ${esc(j.error||"error")}.`;
+    }
+  }catch(e){
+    btn.disabled=false; btn.textContent="Sí, cancelar la cita";
+    $("bbInfo").innerHTML=`<strong>Sin conexión.</strong> Intenta otra vez.`;
+  }
+}
+function closeBar(){
+  $("bookbar").hidden=true; bkSel=null; cancelSel=null;
+  $("bbGo").classList.remove("danger"); $("bbHora").style.display="";
+}
 function openBooking(ci,ri){
   if(state.generalView){
     // vista general: para reservar hay que elegir el servicio primero
@@ -662,6 +706,7 @@ function openBooking(ci,ri){
     window.open(svcs.length>1 ? MENU : WIDGET(svcs[0].id),"_blank","noopener");
     return;
   }
+  cancelSel=null; $("bbGo").classList.remove("danger"); $("bbHora").style.display="";
   bkSel={c,r,cl,date:state.date};   // fijar el día AHORA: si cambian de día con la barra abierta, no se cruza
   const sel=$("bbHora"); sel.innerHTML="";
   const starts=(c.slots||[]).filter(m=>m>=r.a&&m<=r.b);
@@ -675,8 +720,9 @@ function openBooking(ci,ri){
   $("bbGo").disabled=false; $("bbGo").textContent="Confirmar cita";
   $("bookbar").hidden=false;
 }
-$("bbNo").addEventListener("click",()=>{ $("bookbar").hidden=true; bkSel=null; });
+$("bbNo").addEventListener("click",closeBar);
 $("bbGo").addEventListener("click",async ()=>{
+  if(cancelSel) return doCancelUI();
   if(!bkSel) return;
   const {c,cl}=bkSel;
   const day=bkSel.date;               // el día fijado al abrir la barra, no el que esté elegido ahora
@@ -710,7 +756,7 @@ async function load(){
   state.generalView = general;
   const svcs = general ? [GENERAL_SVC] : state.services;
   const my=++state.reqId;
-  $("bookbar").hidden=true; bkSel=null;   // al recargar/cambiar de día, cerrar la barra para no cruzar días
+  closeBar();   // al recargar/cambiar de día, cerrar la barra para no cruzar días
   $("meta").hidden=false;
   $("metaTitle").textContent=`${general?"Disponibilidad del equipo":svcTitle()} · ${longDate(state.date)}`;
   $("stamp").textContent="";
