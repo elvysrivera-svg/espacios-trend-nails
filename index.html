@@ -427,19 +427,43 @@ function reopenPicker(){
 }
 
 /* ---------- datos ---------- */
+/* Fila de consultas: máximo 4 a la vez (nada de ráfagas que disparen el límite de GHL),
+   y si GHL dice 429 TODAS pausan juntas y se reintenta hasta 3 veces. */
+let q429until=0, qActive=0; const qJobs=[], Q_MAX=4;
+function qFetch(url){ return new Promise((res,rej)=>{ qJobs.push({url,res,rej}); qPump(); }); }
+async function qPump(){
+  if(qActive>=Q_MAX || !qJobs.length) return;
+  const job=qJobs.shift(); qActive++;
+  try{
+    let r, tries=0;
+    for(;;){
+      const wait=q429until-Date.now();
+      if(wait>0) await new Promise(z=>setTimeout(z,wait));
+      r=await fetch(job.url,{headers:{accept:"application/json"}});
+      if(r.status!==429 || tries>=3) break;
+      tries++; q429until=Date.now()+2800+Math.floor(Math.random()*700);
+    }
+    job.res(r);
+  }catch(e){ job.rej(e); }
+  finally{ qActive--; qPump(); }
+}
+/* Memoria de huecos (60 s): añadir un servicio o volver a un día reciente no re-consulta lo ya pedido. */
+const slotCache={};
+function slotCacheDrop(iso){ for(const k in slotCache){ if(k.includes("|"+iso+"|")) delete slotCache[k]; } }
 async function slotsFor(calId, iso, userId){
+  const key=calId+"|"+iso+"|"+(userId||"");
+  const hit=slotCache[key];
+  if(hit && Date.now()-hit.at<60000) return hit.slots;
   const [a,b]=msRange(iso);
   let url=`https://backend.leadconnectorhq.com/calendars/${calId}/free-slots`
         +`?startDate=${a}&endDate=${b}&timezone=${encodeURIComponent(TZ)}&sendSeatsPerSlot=false`;
   if(userId) url+=`&userId=${userId}`;
-  let r=await fetch(url,{headers:{accept:"application/json"}});
-  if(r.status===429){ // límite de consultas: esperar y reintentar una vez
-    await new Promise(z=>setTimeout(z,2600));
-    r=await fetch(url,{headers:{accept:"application/json"}});
-  }
+  const r=await qFetch(url);
   if(!r.ok) throw new Error("HTTP "+r.status);
   const j=await r.json(); const day=j[iso];
-  return (day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
+  const slots=(day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
+  slotCache[key]={at:Date.now(), slots};
+  return slots;
 }
 const busyCache={};   // por fecha, 2 min — cambiar de día y volver no re-consulta
 function busyCached(iso){ const e=busyCache[iso]; return (e && Date.now()-e.at<120000) ? e.map : null; }
@@ -600,6 +624,7 @@ $("bbGo").addEventListener("click",async ()=>{
     if(j.ok){
       btn.textContent="✅ Cita creada";
       $("bbInfo").innerHTML=`<strong>¡Lista!</strong> ${((cl.fn||"")+" "+(cl.ln||"")).trim()} · ${longDate(day)} a las ${fmtMin(m)} con ${c.name}. Le llega su confirmación.`;
+      slotCacheDrop(day); delete busyCache[day];   // la cita nueva cambia la disponibilidad: olvidar lo cacheado de ese día
       setTimeout(()=>{ $("bookbar").hidden=true; bkSel=null; load(); },2600);
     } else {
       btn.disabled=false; btn.textContent="Confirmar cita";
@@ -630,7 +655,6 @@ async function load(){
     // huecos de cada servicio por técnica (entre servicios, pausa corta por el límite de consultas)
     const perSvc=[];                       // perSvc[k] = Map(uid -> Set de minutos libres)
     for(let k=0;k<svcs.length;k++){
-      if(k) await new Promise(z=>setTimeout(z,350));
       const rows=await Promise.all(team.map(async uid=>{
         const raw=await slotsFor(svcs[k].id,state.date,uid);
         return [uid, new Set(raw.map(minOfDay))];
@@ -687,7 +711,11 @@ $("q").addEventListener("input",e=>renderOptions(e.target.value));
 $("q").addEventListener("focus",e=>renderOptions(e.target.value));
 $("changeBtn").addEventListener("click",reopenPicker);
 $("addBtn").addEventListener("click",addSvc);
-$("refresh").addEventListener("click",()=>{ if(state.services.length) load(); else reopenPicker(); });
+$("refresh").addEventListener("click",()=>{
+  // "Actualizar" = datos frescos de verdad: olvidar lo cacheado de este día
+  slotCacheDrop(state.date); delete busyCache[state.date];
+  if(state.services.length) load(); else reopenPicker();
+});
 document.addEventListener("click",e=>{
   if(!$("field").contains(e.target)){ $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); }
   if($("cfield") && !$("cfield").contains(e.target)){ $("cOptions").hidden=true; }
