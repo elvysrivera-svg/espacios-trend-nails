@@ -71,6 +71,14 @@
   .chosen[hidden]{display:none}   /* display:flex anula el atributo hidden si no se declara */
   .chosen .nm{font-weight:600; font-size:14px; line-height:1.2}
   .chosen .dur{font-size:11px; color:var(--ink-faint)}
+  .chosen .svc-list{flex:1 1 auto; min-width:0}
+  .svc-chip{display:flex; align-items:center; justify-content:space-between; gap:6px;
+    font-weight:600; font-size:13.5px; line-height:1.3; padding:2px 0}
+  .svc-chip .cd{font-weight:400; font-size:11px; color:var(--ink-faint)}
+  .svc-chip .x{background:none; border:0; color:var(--ink-faint); cursor:pointer;
+    font:inherit; font-size:14px; line-height:1; padding:2px 5px; border-radius:6px; flex:0 0 auto}
+  .svc-chip .x:hover,.svc-chip .x:focus-visible{color:#E5484D; background:rgba(229,72,77,.12); outline:none}
+  .svc-actions{display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex:0 0 auto}
   .link{
     background:none; border:0; padding:3px 2px; font:inherit; font-size:12px; font-weight:700;
     color:var(--lacquer); cursor:pointer; text-decoration:underline; text-underline-offset:3px; flex:0 0 auto;
@@ -201,11 +209,14 @@
         <ul class="options" id="options" hidden role="listbox" aria-label="Servicios"></ul>
       </div>
       <div class="chosen" id="chosen" hidden>
-        <div>
-          <div class="nm" id="chosenName"></div>
+        <div class="svc-list">
+          <div id="svcChips"></div>
           <div class="dur" id="chosenDur"></div>
         </div>
-        <button class="link" id="changeBtn" type="button">Cambiar</button>
+        <div class="svc-actions">
+          <button class="link" id="addBtn" type="button">+ Añadir servicio</button>
+          <button class="link" id="changeBtn" type="button">Cambiar</button>
+        </div>
       </div>
     </div>
     <div class="field" id="cfield">
@@ -233,11 +244,13 @@
   </div>
 
   <div class="board" id="board">
-    <div class="state"><strong>Elige un servicio</strong>Los espacios verdes son disponibles — dale clic a uno y te sale la página para reservar.</div>
+    <div class="state"><strong>Elige un servicio</strong>Puedes añadir más de uno con «+ Añadir servicio» — todo queda en una misma reservación. Los espacios verdes son disponibles.</div>
   </div>
 
   <footer>
     <strong>Verde = espacio disponible</strong> · <strong>Rojo = ocupado o fuera de turno</strong>.
+    ✨ Con <strong>+ Añadir servicio</strong> puedes combinar varios servicios en <strong>una misma reservación</strong>
+    (el verde muestra solo los espacios donde cabe todo seguido con la misma técnica).
     👆 <strong>Dale clic al espacio verde:</strong> si elegiste la clienta arriba, confirmas la hora y la cita
     queda creada al instante (le llega su confirmación); si no, se abre la página de reserva.
     Sale directo del calendario al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
@@ -253,6 +266,10 @@
 
 <script>
 const DATA = {"staff":{"BQsJfxc8p7gXwVbXN996":"Rosemarie","3L3JPYqRxqqhMKJMnlDP":"Karelys","J4QowXcetly14EtpDQ2X":"Kristi","YQdq6AMAxLwyq15DMnLn":"Jahaira","ruG3xOXEKMFefGysrUUW":"Delianis","TkM2wOYinB8E1F0cugjf":"Elvys","Y0ntiN7amJipExCQKvws":"Rosa","vBnLPd8Y0paHajwj4CYK":"Daneysha","EoEoF89oUzZMEiPUKfGt":"Brenda"},"services":[{"id":"Hx1Zoy1sawYoo5SZMysC","n":"Acrílico en dedito gordo del pie","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"8X2uRNOG4VCBsWgVwdBy","n":"Aplicación de parafina","d":15,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"EezPB3sITJuJSzrRYoW9","n":"Arreglo de una (1) uña en acrílico","d":30,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"mRJvYqrjm2ua43v5rUFq","n":"Arreglo de uña en gel","d":20,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"qEhkAcZFgWoJQ9FAemJW","n":"Cortes de uñas de pies","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"gPMjdoKgYxBfeiWwcLzG","n":"Diseños elaborado en todas las uñas","d":45,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"qMbHXWozStOI9d8HGdlA","n":"Diseños en relieve (2 uñas) sencillo","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"CZpZF1TjztJIf7p9ZkXN","n":"Diseños en relieve elaborado (todas)","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"ybhkR0zscmcTqtEB5AYV","n":"Diseños personalizados (animados, etc.)","d":60,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"icjh1tVET66Z01537Wuo","n":"Diseños sencillos en dos uñas","d":15,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"g36RaezJv7mpr25eCRpU","n":"Diseños sencillos en todas las uñas","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"aoEm0pl0DZVHJRu5yh8s","n":"Dos tonos en pies","d":80,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"9NrzbWzFWcLi5aoPIoJ5","n":"Esmaltado de gel clear","d":25,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"mHR0N7KD6F0AERAPq6p9","n":"Esmaltado de gel en pies","d":30,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"Ez5uHFB94nW8Y97m5mc1","n":"Esmaltado en gel en manos con Builder","d":80,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"lkL37TRj1Kl1JgFuEALH","n":"Esmaltado regular en manos","d":15,"g":"cRY5s0ltQKkVzMp2olCv","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt"]},{"id":"qCcAONbuDombNG0Zxp1O","n":"Esmaltado regular en pies","d":15,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"iFTIlSN50BZ3Fu840Eyh","n":"Full set baby boomer (ombré)","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"beBgKZovv7Ff64cNySiw","n":"Full set cortas almond/coffin","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"8Dpm5uidS3s3b9WKEp2g","n":"Full set cortas en acrílico de color","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"WTkToNpniEBxpfQvkFSl","n":"Full set cortas en acrílico de color — OFERTA","d":75,"g":"ofGTPF77E8xlplWW9JJ5","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","Y0ntiN7amJipExCQKvws"]},{"id":"nPPZX2YnjM5NvNb8vCjx","n":"Full set de acrílico de color en pies","d":80,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"pBFwHIArqgsyaaXuqy83","n":"Full set dos tonos cortas","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"D92UuxcnIIIiWQkboc8n","n":"Full set en pies sencillo (acrílico regular)","d":60,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"ARFI4hy7jZp1PVOeBwGT","n":"Full set esculturales medianas","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"Bp2loHDTJk54PLL3tuYA","n":"Full set gel tips cortas","d":80,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn"]},{"id":"RV1uhwh4E0KHqkdG7AZl","n":"Full set gel tips largas","d":105,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn"]},{"id":"N0xlx7HF1swl6xG7Z6EI","n":"Full set gel tips medianas","d":90,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn"]},{"id":"LeBl4UWcZ0B5jm0xnklM","n":"Full set largas acrílico de color","d":140,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"dkaIGgCvndiYkh9YQhAn","n":"Full set largas almond/coffin","d":120,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"LADpMPGYHsRHlZlUca1v","n":"Full set medianas almond/coffin","d":90,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"WkSvlK7a52WGdejjwHy0","n":"Full set medianas en acrílico de color","d":110,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"bxQ82vpM4AnSV1LHLYVj","n":"Full set regular cortas con esmaltado en gel","d":30,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"pwPUQqHl0ZUgasIkwURV","n":"Full set sencillo cortas cuadradas","d":75,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"Sxv2mlMxsfWCwyigN1SB","n":"Full set sencillo largas cuadradas","d":105,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"GtuYTWr3EAWSJpm9FSe7","n":"Full set sencillo medianas cuadradas","d":100,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"FOe7WXIxIJz6WURq8X73","n":"Full set sencillo XL cuadradas","d":150,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"6vwMRZmxKYCBKviNyZep","n":"Full set XL acrílico de color","d":170,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"DtjP0K6mgYHjrtzEz0JZ","n":"Head Spa","d":120,"g":"PFd221GFOa663WjwOJXz","tm":["vBnLPd8Y0paHajwj4CYK","BQsJfxc8p7gXwVbXN996"]},{"id":"gUqhOrD1oRxDyBILQFCf","n":"Manicura con gel clear","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"eGe9PYICNx0cGoHcFmnH","n":"Manicura en seco con esmaltado en gel","d":60,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"yXEl9MSGuUE3CBJa4osZ","n":"Manicura sencilla con esmalte clear regular","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW"]},{"id":"aBNT8juNjHCiWNyeP77c","n":"Manicura sencilla con esmalte regular","d":45,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW"]},{"id":"CBZW9ulf4PCajsdLBPeR","n":"Manicura Spa — OFERTA","d":60,"g":"fT0sXptFVjHBh5NXRncJ","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"avtlL5MRbaddOnvKrhAQ","n":"Manicura spa con esmaltado en gel en color","d":60,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"1x6JRye2SFhLFoOAa87j","n":"Manicura spa con esmaltado regular","d":70,"g":"wFzMzHU9ecEmSDdBxwnc","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996"]},{"id":"cD4dawqBzxW4QbrMdkNX","n":"Manicura y Pedicura — OFERTA","d":120,"g":"ofGTPF77E8xlplWW9JJ5","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"hnpIXeiI3sSkalYU2XuN","n":"Parafina","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"ToQbIYacEvAQgWgKGrKe","n":"Pedicura deluxe","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"22rzDXrEGL04Nkcof6Ia","n":"Pedicura deluxe con esmaltado en gel","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"adP4ePXrCRnUpJEF75yN","n":"Pedicura sencilla","d":60,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"wu9pvYRkckJDgmCy4lqy","n":"Pedicura sencilla con esmaltado de gel","d":90,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"sRwJjdMQ1YsvkERKMAp8","n":"Pedicura spa","d":60,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"Kw76D0PFGGx4vO0IBY5B","n":"Pedicura Spa — OFERTA","d":60,"g":"Ie8nCrazRqN34JtWb6S1","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"Gx3i4M1pv69zqBpi03N1","n":"Pedicura spa con esmaltado en gel","d":105,"g":"fzOC2zNF91UNsCtsiQ7i","tm":["YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","vBnLPd8Y0paHajwj4CYK","EoEoF89oUzZMEiPUKfGt","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996"]},{"id":"dNLv41IF9boLAksKczIP","n":"Remoción de acrílico","d":25,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"kAeKnqoJrT5gIQWsOM2s","n":"Remoción de gel","d":20,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"4VT3qJkcujmIjYhqMWpU","n":"Remoción de gel tips","d":20,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"3jV9KtHYF25GsYqjZ5il","n":"Remoción de uñeros","d":15,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]},{"id":"jOVGwRWT4yWWNKY38nPX","n":"Retoque de acrílico de color nuevo","d":80,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"CxIvpmCa1vHvCiBhRNxQ","n":"Retoque de acrílico en pies","d":60,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"xicaGPKmYL6fcxfuF5bw","n":"Retoque de acrílico sencillo con esmaltado en gel","d":75,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"n9mew9JrgjOiGgTLTIQj","n":"Retoque de acrílico, gel y parafina — OFERTA","d":70,"g":"fT0sXptFVjHBh5NXRncJ","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","EoEoF89oUzZMEiPUKfGt"]},{"id":"YPqpcCo9nEPnwCHf4PG5","n":"Retoque de dedito gordo en acrílico (ambos)","d":20,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"AuODJ11avkPJ7ls9tVic","n":"Retoque de dos tonos nuevo","d":100,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"RFReaX7pmFEbZyC94zqY","n":"Retoque de gel tip con esmaltado en gel","d":90,"g":"bfbJjjtFPSgfgZ8IWyb2","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","ruG3xOXEKMFefGysrUUW","BQsJfxc8p7gXwVbXN996","3L3JPYqRxqqhMKJMnlDP","YQdq6AMAxLwyq15DMnLn","EoEoF89oUzZMEiPUKfGt"]},{"id":"7zeNjsutWO7bwiN10qwn","n":"Retoque en dedito gordo (ambos) con gel","d":45,"g":"GceGdaCTfwrkVLp7neyI","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP"]},{"id":"egdNu5KMi6vBCQ6kgcb4","n":"Retoque sencillo con esmalte regular","d":60,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws","EoEoF89oUzZMEiPUKfGt"]},{"id":"fbVJ7kIyGm8xxrCIGAie","n":"Retoque sencillo de acrílico de color","d":60,"g":"BcIF9jkT2zu23pNuUO6U","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","Y0ntiN7amJipExCQKvws"]},{"id":"7tuGa7ycIYAp4tkRScjq","n":"Servicio extra SPA","d":30,"g":"9ZtC5GQBfAAw0VxyROLX","tm":["vBnLPd8Y0paHajwj4CYK","J4QowXcetly14EtpDQ2X","BQsJfxc8p7gXwVbXN996","ruG3xOXEKMFefGysrUUW","YQdq6AMAxLwyq15DMnLn","3L3JPYqRxqqhMKJMnlDP","EoEoF89oUzZMEiPUKfGt","Y0ntiN7amJipExCQKvws"]}]};
+/* Precio "desde" por servicio (sacado de la descripción de cada calendario). Head Spa y
+   Diseños personalizados no tienen precio fijo — se muestra solo la duración. */
+const PRICE={"1x6JRye2SFhLFoOAa87j":38,"22rzDXrEGL04Nkcof6Ia":75,"3jV9KtHYF25GsYqjZ5il":5,"4VT3qJkcujmIjYhqMWpU":15,"6vwMRZmxKYCBKviNyZep":75,"7tuGa7ycIYAp4tkRScjq":15,"7zeNjsutWO7bwiN10qwn":29,"8Dpm5uidS3s3b9WKEp2g":55,"8X2uRNOG4VCBsWgVwdBy":10,"9NrzbWzFWcLi5aoPIoJ5":25,"ARFI4hy7jZp1PVOeBwGT":75,"AuODJ11avkPJ7ls9tVic":60,"Bp2loHDTJk54PLL3tuYA":60,"CBZW9ulf4PCajsdLBPeR":50,"CZpZF1TjztJIf7p9ZkXN":20,"CxIvpmCa1vHvCiBhRNxQ":30,"D92UuxcnIIIiWQkboc8n":35,"EezPB3sITJuJSzrRYoW9":3,"Ez5uHFB94nW8Y97m5mc1":40,"FOe7WXIxIJz6WURq8X73":75,"GtuYTWr3EAWSJpm9FSe7":55,"Gx3i4M1pv69zqBpi03N1":65,"Hx1Zoy1sawYoo5SZMysC":10,"Kw76D0PFGGx4vO0IBY5B":50,"LADpMPGYHsRHlZlUca1v":60,"LeBl4UWcZ0B5jm0xnklM":70,"N0xlx7HF1swl6xG7Z6EI":65,"RFReaX7pmFEbZyC94zqY":50,"RV1uhwh4E0KHqkdG7AZl":70,"Sxv2mlMxsfWCwyigN1SB":65,"ToQbIYacEvAQgWgKGrKe":65,"WTkToNpniEBxpfQvkFSl":50,"WkSvlK7a52WGdejjwHy0":65,"YPqpcCo9nEPnwCHf4PG5":4,"aBNT8juNjHCiWNyeP77c":25,"adP4ePXrCRnUpJEF75yN":45,"aoEm0pl0DZVHJRu5yh8s":50,"avtlL5MRbaddOnvKrhAQ":50,"beBgKZovv7Ff64cNySiw":55,"bxQ82vpM4AnSV1LHLYVj":55,"cD4dawqBzxW4QbrMdkNX":85,"dNLv41IF9boLAksKczIP":15,"dkaIGgCvndiYkh9YQhAn":75,"eGe9PYICNx0cGoHcFmnH":45,"egdNu5KMi6vBCQ6kgcb4":35,"fbVJ7kIyGm8xxrCIGAie":40,"g36RaezJv7mpr25eCRpU":10,"gPMjdoKgYxBfeiWwcLzG":15,"gUqhOrD1oRxDyBILQFCf":30,"hnpIXeiI3sSkalYU2XuN":10,"iFTIlSN50BZ3Fu840Eyh":60,"icjh1tVET66Z01537Wuo":5,"jOVGwRWT4yWWNKY38nPX":60,"kAeKnqoJrT5gIQWsOM2s":10,"lkL37TRj1Kl1JgFuEALH":15,"mHR0N7KD6F0AERAPq6p9":25,"mRJvYqrjm2ua43v5rUFq":3,"n9mew9JrgjOiGgTLTIQj":50,"nPPZX2YnjM5NvNb8vCjx":45,"pBFwHIArqgsyaaXuqy83":60,"pwPUQqHl0ZUgasIkwURV":45,"qCcAONbuDombNG0Zxp1O":15,"qEhkAcZFgWoJQ9FAemJW":10,"qMbHXWozStOI9d8HGdlA":8,"sRwJjdMQ1YsvkERKMAp8":55,"wu9pvYRkckJDgmCy4lqy":55,"xicaGPKmYL6fcxfuF5bw":45,"yXEl9MSGuUE3CBJa4osZ":20};
+const MENU = "https://link.eraconsultingpr.com/widget/service-menus/trend-nails-salon?lang=es";
 const TZ = "America/Puerto_Rico", OFFSET = "-04:00", DAYS_AHEAD = 14;
 const LOOKUP = "https://script.google.com/macros/s/AKfycbyMlXSef1PKEIapZwk4O5rYV0uAYDkVImeDLTGJgEk3lb0mlpPmySy00S9aSScZXR3oKw/exec"; // endpoint de búsqueda de clientas (Apps Script)
 const WIDGET = id => {
@@ -266,7 +283,21 @@ const WIDGET = id => {
   return u;
 };
 const $ = id => document.getElementById(id);
-const state = { date:null, service:null, reqId:0 };
+const state = { date:null, services:[], addMode:false, reqId:0 };
+
+/* ---------- multi-servicio: una misma reservación ---------- */
+function totDur(){ return state.services.reduce((n,s)=>n+s.d,0); }
+function totPrice(){ let sum=0, all=true; for(const s of state.services){ const p=PRICE[s.id]; if(p) sum+=p; else all=false; } return {sum, all}; }
+function svcTitle(){ return state.services.map(s=>s.n).join(" + "); }
+function fmtDur(m){ const h=Math.floor(m/60), mi=m%60; return h ? (mi?`${h}h ${mi}min`:`${h}h`) : `${mi} min`; }
+function teamIds(){                       // técnicas que hacen TODOS los servicios elegidos
+  let t=null;
+  for(const s of state.services){
+    const tm = s.tm.length ? s.tm : Object.keys(DATA.staff);
+    t = t ? t.filter(u=>tm.includes(u)) : tm.slice();
+  }
+  return t || [];
+}
 
 /* ---------- vista (master o por técnica) ---------- */
 function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
@@ -318,10 +349,19 @@ function selectDayPill(iso){
 function svcFor(uid){ return DATA.services.filter(s=>!uid || s.tm.includes(uid)); }
 function renderOptions(term){
   const ul=$("options"); const t=norm(term.trim());
-  const pool = svcFor(TEAM_FILTER && TEAM_FILTER[0]);
+  let pool = svcFor(TEAM_FILTER && TEAM_FILTER[0]);
+  if(state.addMode && state.services.length){
+    // al añadir: solo servicios que la MISMA técnica pueda hacer junto a lo ya elegido
+    const team=teamIds();
+    pool = pool.filter(s=>!state.services.some(x=>x.id===s.id) && s.tm.some(u=>team.includes(u)));
+  }
   const list = t ? pool.filter(s=>norm(s.n).includes(t)) : pool;
   ul.innerHTML="";
-  if(!list.length){ ul.innerHTML=`<li class="empty-opt">Ningún servicio con “${term}”.</li>`; }
+  if(!list.length){
+    ul.innerHTML = state.addMode && state.services.length
+      ? `<li class="empty-opt">No hay más servicios que la misma técnica pueda hacer junto a lo elegido${t?` con “${term}”`:""}.</li>`
+      : `<li class="empty-opt">Ningún servicio con “${term}”.</li>`;
+  }
   else for(const s of list.slice(0,60)){
     const li=document.createElement("li"); li.setAttribute("role","option");
     const b=document.createElement("button"); b.type="button";
@@ -332,15 +372,51 @@ function renderOptions(term){
   ul.hidden=false; $("q").setAttribute("aria-expanded","true");
 }
 function choose(s){
-  state.service=s;
-  $("options").hidden=true; $("q").setAttribute("aria-expanded","false");
+  if(state.addMode){ if(!state.services.some(x=>x.id===s.id)) state.services.push(s); }
+  else state.services=[s];
+  state.addMode=false;
+  $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); $("q").value="";
   $("pickerBox").hidden=true; $("chosen").hidden=false;
-  $("chosenName").textContent=s.n;
-  $("chosenDur").textContent=`${s.d} min`;
-  try{ localStorage.setItem("tn_esp_service",s.id); }catch(e){}
+  renderChips();
+  try{ localStorage.setItem("tn_esp_service",state.services[0].id); }catch(e){}
   load();
 }
-function reopenPicker(){ $("chosen").hidden=true; $("pickerBox").hidden=false; const q=$("q"); q.value=""; renderOptions(""); q.focus(); }
+function renderChips(){
+  const box=$("svcChips"); box.innerHTML="";
+  const multi = state.services.length>1;
+  for(const s of state.services){
+    const c=document.createElement("div"); c.className="svc-chip";
+    const nm=document.createElement("span");
+    nm.innerHTML=`${s.n} <span class="cd">· ${s.d} min${PRICE[s.id]?` · desde $${PRICE[s.id]}`:""}</span>`;
+    c.appendChild(nm);
+    if(multi){
+      const x=document.createElement("button"); x.type="button"; x.className="x"; x.textContent="✕";
+      x.setAttribute("aria-label","Quitar "+s.n);
+      x.addEventListener("click",()=>removeSvc(s.id));
+      c.appendChild(x);
+    }
+    box.appendChild(c);
+  }
+  const tp=totPrice();
+  $("chosenDur").textContent = multi
+    ? `Una misma reservación · ${fmtDur(totDur())} en total${tp.sum?` · desde $${tp.sum}${tp.all?"":" +"}`:""}`
+    : (state.services[0] ? `${fmtDur(state.services[0].d)}${PRICE[state.services[0].id]?` · desde $${PRICE[state.services[0].id]}`:""}` : "");
+}
+function removeSvc(id){
+  state.services=state.services.filter(s=>s.id!==id);
+  if(!state.services.length){ reopenPicker(); return; }
+  renderChips(); load();
+}
+function addSvc(){
+  state.addMode=true;
+  $("pickerBox").hidden=false;
+  const q=$("q"); q.value=""; renderOptions(""); q.focus();
+}
+function reopenPicker(){
+  state.services=[]; state.addMode=false;
+  $("chosen").hidden=true; $("pickerBox").hidden=false;
+  const q=$("q"); q.value=""; renderOptions(""); q.focus();
+}
 
 /* ---------- datos ---------- */
 async function slotsFor(calId, iso, userId){
@@ -357,9 +433,8 @@ async function slotsFor(calId, iso, userId){
   const j=await r.json(); const day=j[iso];
   return (day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
 }
-function toRanges(slots){
-  if(!slots.length) return [];
-  const mins=slots.map(minOfDay);
+function toRangesM(mins){   // agrupa minutos consecutivos en bloques
+  if(!mins.length) return [];
   let step=Infinity;
   for(let i=1;i<mins.length;i++) step=Math.min(step,mins[i]-mins[i-1]);
   if(!isFinite(step)||step<=0) step=5;
@@ -376,7 +451,7 @@ function drawBoard(cols, durMin){
   state.cols = cols;
   let lo=Infinity, hi=-Infinity;
   cols.forEach(c=>c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); }));
-  if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio para este servicio ${longDate(state.date)}.</div>`; return; }
+  if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio ${state.services.length>1?"donde quepan estos servicios seguidos":"para este servicio"} ${longDate(state.date)}.</div>`; return; }
   lo=Math.floor(lo/60)*60; hi=Math.ceil(hi/60)*60;
   const pxmin=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pxmin"))||1.05;
   const H=(hi-lo)*pxmin;
@@ -416,7 +491,7 @@ function drawBoard(cols, durMin){
       const top=(r.a-lo)*pxmin, h=Math.max((r.b+durMin-r.a)*pxmin,30);
       const label = r.a===r.b ? fmtMin(r.a) : `${fmtMin(r.a)} – ${fmtMin(r.b)}`;
       html+=`<button class="slotblock" style="top:${top}px;height:${h}px"
-        data-ci="${ci}" data-ri="${ri}" title="Reservar ${state.service.n} con ${c.name}">
+        data-ci="${ci}" data-ri="${ri}" title="Reservar ${svcTitle()} con ${c.name}">
         <span class="t">${label}</span><span class="b">Reservar →</span></button>`;
     }
     html+=`</div>`;
@@ -429,19 +504,21 @@ function drawBoard(cols, durMin){
 /* ---------- reserva directa desde el tablero ---------- */
 let bkSel=null;
 function openBooking(ci,ri){
-  const c=state.cols[ci], r=c.ranges[ri], s=state.service, cl=state.clienta;
+  const c=state.cols[ci], r=c.ranges[ri], svcs=state.services, cl=state.clienta;
   if(!cl || !cl.id){
-    // sin clienta elegida: abrir el widget como antes
-    window.open(WIDGET(s.id),"_blank","noopener");
+    // sin clienta elegida: abrir el widget (con varios servicios, el Menú de Servicios)
+    window.open(svcs.length>1 ? MENU : WIDGET(svcs[0].id),"_blank","noopener");
     return;
   }
-  bkSel={c,r,s,cl};
+  bkSel={c,r,cl};
   const sel=$("bbHora"); sel.innerHTML="";
   const starts=(c.slots||[]).filter(m=>m>=r.a&&m<=r.b);
   for(const m of (starts.length?starts:[r.a])){
     const o=document.createElement("option"); o.value=m; o.textContent=fmtMin(m); sel.appendChild(o);
   }
-  $("bbInfo").innerHTML=`<strong>${s.n}</strong> con <strong>${c.name}</strong> · ${longDate(state.date)}<br>`+
+  const tp=totPrice();
+  $("bbInfo").innerHTML=`<strong>${svcTitle()}</strong> con <strong>${c.name}</strong> · ${longDate(state.date)}`+
+    ` · ${fmtDur(totDur())}${svcs.length>1&&tp.sum?` · desde $${tp.sum}${tp.all?"":" +"}`:""}<br>`+
     `para <strong>${((cl.fn||"")+" "+(cl.ln||"")).trim()}</strong> ${cl.ph||""}`;
   $("bbGo").disabled=false; $("bbGo").textContent="Confirmar cita";
   $("bookbar").hidden=false;
@@ -449,15 +526,16 @@ function openBooking(ci,ri){
 $("bbNo").addEventListener("click",()=>{ $("bookbar").hidden=true; bkSel=null; });
 $("bbGo").addEventListener("click",async ()=>{
   if(!bkSel) return;
-  const {c,s,cl}=bkSel;
+  const {c,cl}=bkSel;
   const m=+$("bbHora").value;
   const hh=String(Math.floor(m/60)).padStart(2,"0"), mm=String(m%60).padStart(2,"0");
-  const e2=m+s.d, eh=String(Math.floor(e2/60)).padStart(2,"0"), em2=String(e2%60).padStart(2,"0");
+  const e2=m+totDur(), eh=String(Math.floor(e2/60)).padStart(2,"0"), em2=String(e2%60).padStart(2,"0");
   const start=`${state.date}T${hh}:${mm}:00${OFFSET}`, end=`${state.date}T${eh}:${em2}:00${OFFSET}`;
   const btn=$("bbGo"); btn.disabled=true; btn.textContent="Creando cita…";
   try{
-    const u=LOOKUP+`?action=book&calId=${s.id}&userId=${c.uid}&contactId=${encodeURIComponent(cl.id)}`+
-      `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&title=${encodeURIComponent(s.n)}`;
+    // UNA cita en el calendario del primer servicio, con la duración total y el título combinado
+    const u=LOOKUP+`?action=book&calId=${state.services[0].id}&userId=${c.uid}&contactId=${encodeURIComponent(cl.id)}`+
+      `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&title=${encodeURIComponent(svcTitle())}`;
     const r2=await fetch(u); const j=await r2.json();
     if(j.ok){
       btn.textContent="✅ Cita creada";
@@ -474,24 +552,37 @@ $("bbGo").addEventListener("click",async ()=>{
 });
 
 async function load(){
-  const s=state.service; if(!s) return;
+  const svcs=state.services; if(!svcs.length) return;
   const my=++state.reqId;
   $("meta").hidden=false;
-  $("metaTitle").textContent=`${s.n} · ${longDate(state.date)}`;
+  $("metaTitle").textContent=`${svcTitle()} · ${longDate(state.date)}`;
   $("stamp").textContent="";
   $("board").innerHTML=`<div class="state"><div class="spin"></div>Buscando espacios…</div>`;
-  let team = s.tm.length ? s.tm : Object.keys(DATA.staff);
+  let team = teamIds();
   if(TEAM_FILTER) team = team.filter(u=>TEAM_FILTER.includes(u));
   if(!team.length){
-    $("board").innerHTML=`<div class="state"><strong>Este servicio no lo atiende esta técnica</strong>Elige otro servicio.</div>`;
+    $("board").innerHTML=`<div class="state"><strong>${svcs.length>1?"Ninguna técnica hace estos servicios juntos":"Este servicio no lo atiende esta técnica"}</strong>${svcs.length>1?"Quita alguno de la lista.":"Elige otro servicio."}</div>`;
     return;
   }
   try{
-    const cols=await Promise.all(team.map(async uid=>{
-      const raw=await slotsFor(s.id,state.date,uid);
-      const mins=raw.map(minOfDay);
-      return { uid, name:DATA.staff[uid]||"Técnica", slots:mins, ranges:toRanges(raw) };
-    }));
+    // huecos de cada servicio por técnica (entre servicios, pausa corta por el límite de consultas)
+    const perSvc=[];                       // perSvc[k] = Map(uid -> Set de minutos libres)
+    for(let k=0;k<svcs.length;k++){
+      if(k) await new Promise(z=>setTimeout(z,350));
+      const rows=await Promise.all(team.map(async uid=>{
+        const raw=await slotsFor(svcs[k].id,state.date,uid);
+        return [uid, new Set(raw.map(minOfDay))];
+      }));
+      if(my!==state.reqId) return;
+      perSvc.push(new Map(rows));
+    }
+    // una hora de comienzo sirve si cada servicio cabe justo después del anterior con la misma técnica
+    const offs=[]; let acc=0; for(const s of svcs){ offs.push(acc); acc+=s.d; }
+    const cols=team.map(uid=>{
+      const first=[...(perSvc[0].get(uid)||[])].sort((a,b)=>a-b);
+      const starts=first.filter(t=>svcs.every((s,k)=>perSvc[k].get(uid).has(t+offs[k])));
+      return { uid, name:DATA.staff[uid]||"Técnica", slots:starts, ranges:toRangesM(starts) };
+    });
     if(my!==state.reqId) return;
     const total = cols.reduce((n,c)=>n+c.ranges.reduce((x,r)=>x+r.n,0),0);
     // Si el día actual está lleno y la persona no eligió día a mano, saltar al próximo día con espacio
@@ -504,7 +595,7 @@ async function load(){
     }
     const scanned = state.autoScan; state.autoScan=0;
     cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
-    drawBoard(cols, s.d);
+    drawBoard(cols, totDur());
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
   }catch(err){
@@ -521,7 +612,8 @@ buildDays();
 $("q").addEventListener("input",e=>renderOptions(e.target.value));
 $("q").addEventListener("focus",e=>renderOptions(e.target.value));
 $("changeBtn").addEventListener("click",reopenPicker);
-$("refresh").addEventListener("click",()=>{ if(state.service) load(); else reopenPicker(); });
+$("addBtn").addEventListener("click",addSvc);
+$("refresh").addEventListener("click",()=>{ if(state.services.length) load(); else reopenPicker(); });
 document.addEventListener("click",e=>{
   if(!$("field").contains(e.target)){ $("options").hidden=true; $("q").setAttribute("aria-expanded","false"); }
   if($("cfield") && !$("cfield").contains(e.target)){ $("cOptions").hidden=true; }
