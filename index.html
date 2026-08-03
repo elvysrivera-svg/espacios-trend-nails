@@ -441,9 +441,12 @@ async function slotsFor(calId, iso, userId){
   const j=await r.json(); const day=j[iso];
   return (day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
 }
+const busyCache={};   // por fecha, 2 min — cambiar de día y volver no re-consulta
+function busyCached(iso){ const e=busyCache[iso]; return (e && Date.now()-e.at<120000) ? e.map : null; }
 async function fetchBusy(iso){
   // citas y bloqueos del día por técnica (vía Apps Script; el token vive allá).
   // Si el script aún no tiene action=busy, devuelve null y el rojo queda genérico.
+  const hit=busyCached(iso); if(hit) return hit;
   try{
     const r=await fetch(LOOKUP+"?action=busy&date="+iso);
     const j=await r.json();
@@ -459,6 +462,7 @@ async function fetchBusy(iso){
         .filter(x=>x.b>x.a)
         .sort((p,q)=>p.a-q.a);
     }
+    busyCache[iso]={at:Date.now(), map:m};
     return m;
   }catch(e){ return null; }
 }
@@ -550,7 +554,9 @@ function drawBoard(cols, durMin, busyMap){
     html+=`</div>`;
   }
   html+=`</div></div>`;
+  const st=board.scrollTop, sl=board.scrollLeft;   // el redibujado de etiquetas no debe mover el scroll
   board.innerHTML=html;
+  board.scrollTop=st; board.scrollLeft=sl;
   board.querySelectorAll(".slotblock").forEach(b=>b.addEventListener("click",()=>openBooking(+b.dataset.ci,+b.dataset.ri)));
 }
 
@@ -659,9 +665,10 @@ async function load(){
     }
     const scanned = state.autoScan; state.autoScan=0;
     cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
-    const busyMap = await busyP;
-    if(my!==state.reqId) return;
-    drawBoard(cols, totDur(), busyMap);
+    // pintar YA con lo que haya (el rojo genérico) y encender las etiquetas cuando lleguen —
+    // el detalle de citas/bloqueos tarda unos segundos y no debe frenar la grilla
+    drawBoard(cols, totDur(), busyCached(state.date));
+    busyP.then(bm=>{ if(bm && my===state.reqId) drawBoard(cols, totDur(), bm); });
     state.loadedAt = Date.now();
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
@@ -703,39 +710,46 @@ else{
   });
 }
 let cReqId=0;
+const cCache={};   // búsquedas ya hechas: repetir la misma es instantáneo
 async function searchClienta(q, reintento){
   const my=++cReqId;
   const ul=$("cOptions");
+  if(cCache[q]){ renderClientas(cCache[q]); return; }
   ul.innerHTML=`<li class="empty-opt">Buscando…</li>`; ul.hidden=false;
   try{
     const r=await fetch(LOOKUP+"?q="+encodeURIComponent(q));
     const j=await r.json();
     if(my!==cReqId) return;   // ya hay una búsqueda más nueva — no pisar su resultado
-    ul.innerHTML="";
-    if(!j.matches || !j.matches.length){
-      ul.innerHTML=`<li class="empty-opt">No aparece. Se puede reservar igual y escribir los datos allá.</li>`;
-      return;
-    }
-    for(const m of j.matches){
-      const li=document.createElement("li"); li.setAttribute("role","option");
-      const b=document.createElement("button"); b.type="button";
-      b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${m.ph||"sin teléfono"}${m.em?" · "+m.em:""}</span>`;
-      b.addEventListener("click",()=>{
-        state.clienta=m;
-        $("cPickerBox").hidden=true; $("cChosen").hidden=false;
-        $("cName").textContent=((m.fn||"")+" "+(m.ln||"")).trim();
-        ul.hidden=true;
-      });
-      li.appendChild(b); ul.appendChild(li);
-    }
+    cCache[q]=j.matches||[];
+    renderClientas(cCache[q]);
   }catch(e){
     if(my!==cReqId) return;
     if(!reintento){ setTimeout(()=>{ if(my===cReqId) searchClienta(q, true); }, 900); return; }
     ul.innerHTML=`<li class="empty-opt">No se pudo buscar ahora (${e.message}).</li>`;
   }
 }
-// Calentar el Apps Script al abrir la página (el primer arranque es lento)
-fetch(LOOKUP+"?q=").catch(()=>{});
+function renderClientas(list){
+  const ul=$("cOptions");
+  ul.innerHTML=""; ul.hidden=false;
+  if(!list.length){
+    ul.innerHTML=`<li class="empty-opt">No aparece. Se puede reservar igual y escribir los datos allá.</li>`;
+    return;
+  }
+  for(const m of list){
+    const li=document.createElement("li"); li.setAttribute("role","option");
+    const b=document.createElement("button"); b.type="button";
+    b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${m.ph||"sin teléfono"}${m.em?" · "+m.em:""}</span>`;
+    b.addEventListener("click",()=>{
+      state.clienta=m;
+      $("cPickerBox").hidden=true; $("cChosen").hidden=false;
+      $("cName").textContent=((m.fn||"")+" "+(m.ln||"")).trim();
+      ul.hidden=true;
+    });
+    li.appendChild(b); ul.appendChild(li);
+  }
+}
+// Calentar el Apps Script al abrir la página Y dejar listo el detalle de hoy en caché
+fetchBusy(prToday()).catch(()=>{});
 // Si la pestaña estuvo dormida (celular), refrescar para no enseñar horas viejas
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible" && state.services.length
