@@ -137,6 +137,37 @@
   .slotblock .t{font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.25}
   .slotblock .b{font-size:10px; color:var(--jade); font-weight:700; letter-spacing:.05em; text-transform:uppercase}
 
+  .busyblock{
+    position:absolute; left:5px; right:5px; border-radius:9px; pointer-events:none;
+    background:rgba(229,72,77,.13); border:1px solid rgba(229,72,77,.28);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .busyblock span{font-size:9.5px; color:#E5484D; font-weight:700; letter-spacing:.07em; text-transform:uppercase; opacity:.8}
+
+  /* barra de confirmación de reserva */
+  .bookbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:60;
+    background:var(--card); border-top:2px solid var(--lacquer);
+    box-shadow:0 -10px 30px rgba(0,0,0,.65); padding:13px 14px calc(13px + env(safe-area-inset-bottom));
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  }
+  .bookbar[hidden]{display:none}
+  .bookbar .info{flex:1 1 230px; font-size:13px; line-height:1.5}
+  .bookbar .info strong{color:var(--lacquer)}
+  .bookbar select{
+    font:inherit; padding:9px 10px; border-radius:10px; font-variant-numeric:tabular-nums;
+    background:var(--paper); color:var(--ink); border:1px solid var(--line);
+  }
+  .btn-go{
+    background:var(--jade-mid); color:#06130D; font-weight:700; border:0;
+    padding:11px 18px; border-radius:10px; font:inherit; cursor:pointer;
+  }
+  .btn-go:disabled{opacity:.5; cursor:default}
+  .btn-quiet{
+    background:none; border:1px solid var(--line); color:var(--ink-soft);
+    padding:10px 14px; border-radius:10px; font:inherit; cursor:pointer;
+  }
+
   .state{
     text-align:center; padding:38px 18px; color:var(--ink-faint); font-size:14px;
   }
@@ -205,10 +236,18 @@
   </div>
 
   <footer>
-    <strong>Verde = espacio disponible</strong> para el servicio elegido (horas de comienzo).
-    👆 <strong>Dale clic al espacio verde y te sale la página para reservar esa cita.</strong>
+    <strong>Verde = espacio disponible</strong> · <strong>Rojo = ocupado o fuera de turno</strong>.
+    👆 <strong>Dale clic al espacio verde:</strong> si elegiste la clienta arriba, confirmas la hora y la cita
+    queda creada al instante (le llega su confirmación); si no, se abre la página de reserva.
     Sale directo del calendario al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
   </footer>
+
+  <div class="bookbar" id="bookbar" hidden>
+    <div class="info" id="bbInfo"></div>
+    <select id="bbHora" aria-label="Hora de comienzo"></select>
+    <button class="btn-go" id="bbGo" type="button">Confirmar cita</button>
+    <button class="btn-quiet" id="bbNo" type="button">Cancelar</button>
+  </div>
 </div>
 
 <script>
@@ -333,6 +372,7 @@ function toRanges(slots){
 /* ---------- grilla ---------- */
 function drawBoard(cols, durMin){
   const board=$("board");
+  state.cols = cols;
   let lo=Infinity, hi=-Infinity;
   cols.forEach(c=>c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); }));
   if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio para este servicio ${longDate(state.date)}.</div>`; return; }
@@ -346,7 +386,7 @@ function drawBoard(cols, durMin){
   for(const c of cols){
     const tot=c.ranges.reduce((n,r)=>n+r.n,0);
     html+=`<div class="headcell"><div class="nm">${c.name}</div>
-      <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"sin huecos"}</div></div>`;
+      <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"ocupada / fuera de turno"}</div></div>`;
   }
   html+=`</div>`;
   html+=`<div class="bodyrow" style="grid-template-columns:${gtc}"><div class="gutter" style="height:${H}px">`;
@@ -355,23 +395,82 @@ function drawBoard(cols, durMin){
   const isToday = state.date===prToday();
   const nowP=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
   const nowMin=(+nowP.slice(0,2))*60+(+nowP.slice(3,5));
-  for(const c of cols){
+  for(let ci=0; ci<cols.length; ci++){
+    const c=cols[ci];
     html+=`<div class="col" style="height:${H}px">`;
     for(let m=lo;m<=hi;m+=60) html+=`<div class="hline" style="top:${(m-lo)*pxmin}px"></div>`;
+    // ROJO = ocupado o fuera de turno: todo lo que no está verde dentro de la ventana del día
+    const spans = c.ranges.map(r=>[r.a, r.b+durMin]).sort((x,y)=>x[0]-y[0]);
+    let cursor=lo;
+    const busy=[];
+    for(const [a,b] of spans){ if(a>cursor) busy.push([cursor,a]); cursor=Math.max(cursor,b); }
+    if(cursor<hi) busy.push([cursor,hi]);
+    for(const [a,b] of busy){
+      const bh=(b-a)*pxmin; if(bh<6) continue;
+      html+=`<div class="busyblock" style="top:${(a-lo)*pxmin}px;height:${bh}px">${bh>30?"<span>Ocupado</span>":""}</div>`;
+    }
     if(isToday && nowMin>=lo && nowMin<=hi) html+=`<div class="now" style="top:${(nowMin-lo)*pxmin}px"></div>`;
-    for(const r of c.ranges){
+    for(let ri=0; ri<c.ranges.length; ri++){
+      const r=c.ranges[ri];
       const top=(r.a-lo)*pxmin, h=Math.max((r.b+durMin-r.a)*pxmin,30);
       const label = r.a===r.b ? fmtMin(r.a) : `${fmtMin(r.a)} – ${fmtMin(r.b)}`;
       html+=`<button class="slotblock" style="top:${top}px;height:${h}px"
-        data-cal="${state.service.id}" title="Reservar ${state.service.n} con ${c.name}">
+        data-ci="${ci}" data-ri="${ri}" title="Reservar ${state.service.n} con ${c.name}">
         <span class="t">${label}</span><span class="b">Reservar →</span></button>`;
     }
     html+=`</div>`;
   }
   html+=`</div></div>`;
   board.innerHTML=html;
-  board.querySelectorAll(".slotblock").forEach(b=>b.addEventListener("click",()=>window.open(WIDGET(b.dataset.cal),"_blank","noopener")));
+  board.querySelectorAll(".slotblock").forEach(b=>b.addEventListener("click",()=>openBooking(+b.dataset.ci,+b.dataset.ri)));
 }
+
+/* ---------- reserva directa desde el tablero ---------- */
+let bkSel=null;
+function openBooking(ci,ri){
+  const c=state.cols[ci], r=c.ranges[ri], s=state.service, cl=state.clienta;
+  if(!cl || !cl.id){
+    // sin clienta elegida: abrir el widget como antes
+    window.open(WIDGET(s.id),"_blank","noopener");
+    return;
+  }
+  bkSel={c,r,s,cl};
+  const sel=$("bbHora"); sel.innerHTML="";
+  const starts=(c.slots||[]).filter(m=>m>=r.a&&m<=r.b);
+  for(const m of (starts.length?starts:[r.a])){
+    const o=document.createElement("option"); o.value=m; o.textContent=fmtMin(m); sel.appendChild(o);
+  }
+  $("bbInfo").innerHTML=`<strong>${s.n}</strong> con <strong>${c.name}</strong> · ${longDate(state.date)}<br>`+
+    `para <strong>${((cl.fn||"")+" "+(cl.ln||"")).trim()}</strong> ${cl.ph||""}`;
+  $("bbGo").disabled=false; $("bbGo").textContent="Confirmar cita";
+  $("bookbar").hidden=false;
+}
+$("bbNo").addEventListener("click",()=>{ $("bookbar").hidden=true; bkSel=null; });
+$("bbGo").addEventListener("click",async ()=>{
+  if(!bkSel) return;
+  const {c,s,cl}=bkSel;
+  const m=+$("bbHora").value;
+  const hh=String(Math.floor(m/60)).padStart(2,"0"), mm=String(m%60).padStart(2,"0");
+  const e2=m+s.d, eh=String(Math.floor(e2/60)).padStart(2,"0"), em2=String(e2%60).padStart(2,"0");
+  const start=`${state.date}T${hh}:${mm}:00${OFFSET}`, end=`${state.date}T${eh}:${em2}:00${OFFSET}`;
+  const btn=$("bbGo"); btn.disabled=true; btn.textContent="Creando cita…";
+  try{
+    const u=LOOKUP+`?action=book&calId=${s.id}&userId=${c.uid}&contactId=${encodeURIComponent(cl.id)}`+
+      `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&title=${encodeURIComponent(s.n)}`;
+    const r2=await fetch(u); const j=await r2.json();
+    if(j.ok){
+      btn.textContent="✅ Cita creada";
+      $("bbInfo").innerHTML=`<strong>¡Lista!</strong> ${((cl.fn||"")+" "+(cl.ln||"")).trim()} · ${longDate(state.date)} a las ${fmtMin(m)} con ${c.name}. Le llega su confirmación.`;
+      setTimeout(()=>{ $("bookbar").hidden=true; bkSel=null; load(); },2600);
+    } else {
+      btn.disabled=false; btn.textContent="Confirmar cita";
+      $("bbInfo").innerHTML=`<strong>No se pudo crear:</strong> ${j.error||"error"}. Prueba otra hora o toca Actualizar.`;
+    }
+  }catch(err){
+    btn.disabled=false; btn.textContent="Confirmar cita";
+    $("bbInfo").innerHTML=`<strong>Sin conexión con el sistema de citas.</strong> Intenta de nuevo.`;
+  }
+});
 
 async function load(){
   const s=state.service; if(!s) return;
@@ -387,9 +486,11 @@ async function load(){
     return;
   }
   try{
-    const cols=await Promise.all(team.map(async uid=>({
-      uid, name:DATA.staff[uid]||"Técnica", ranges:toRanges(await slotsFor(s.id,state.date,uid))
-    })));
+    const cols=await Promise.all(team.map(async uid=>{
+      const raw=await slotsFor(s.id,state.date,uid);
+      const mins=raw.map(minOfDay);
+      return { uid, name:DATA.staff[uid]||"Técnica", slots:mins, ranges:toRanges(raw) };
+    }));
     if(my!==state.reqId) return;
     const total = cols.reduce((n,c)=>n+c.ranges.reduce((x,r)=>x+r.n,0),0);
     // Si el día actual está lleno y la persona no eligió día a mano, saltar al próximo día con espacio
@@ -454,8 +555,7 @@ async function searchClienta(q){
     for(const m of j.matches){
       const li=document.createElement("li"); li.setAttribute("role","option");
       const b=document.createElement("button"); b.type="button";
-      const last4=(m.ph||"").replace(/\D/g,"").slice(-4);
-      b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${last4?"teléfono ···"+last4:"sin teléfono"}</span>`;
+      b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${m.ph||"sin teléfono"}${m.em?" · "+m.em:""}</span>`;
       b.addEventListener("click",()=>{
         state.clienta=m;
         $("cPickerBox").hidden=true; $("cChosen").hidden=false;
