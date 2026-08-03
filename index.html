@@ -127,6 +127,9 @@
   .headcell .nm{font-weight:700; font-size:13px; letter-spacing:-.01em}
   .headcell .st{font-size:10px; margin-top:1px; color:var(--ink-faint); font-variant-numeric:tabular-nums}
   .headcell .st.ok{color:var(--jade)}
+  .headcell .ct{font-size:10px; margin-top:1px; color:var(--lacquer); font-weight:700; font-variant-numeric:tabular-nums}
+  .totbadge{font-size:11px; font-weight:700; color:var(--lacquer); background:var(--lacquer-soft);
+    padding:3px 9px; border-radius:999px; font-variant-numeric:tabular-nums}
   .corner{width:var(--gutter); position:sticky; left:0; background:var(--card); z-index:21}
 
   .bodyrow{display:grid}
@@ -140,7 +143,11 @@
   }
   .col{width:var(--colw); position:relative; border-left:1px solid var(--line-soft)}
   .hline{position:absolute; left:0; right:0; height:1px; background:var(--line-soft)}
-  .now{position:absolute; left:0; right:0; height:2px; background:var(--lacquer); z-index:5; opacity:.8}
+  .now{position:absolute; left:0; right:0; height:3px; background:var(--lacquer); z-index:6;
+    box-shadow:0 0 8px 1px rgba(232,196,104,.55)}
+  .nowlab{position:absolute; right:3px; transform:translateY(-50%); z-index:12;
+    font-size:9px; font-weight:700; font-variant-numeric:tabular-nums; color:#0A0A0A;
+    background:var(--lacquer); padding:2px 5px; border-radius:6px; white-space:nowrap}
 
   .slotblock{
     position:absolute; left:5px; right:5px; border-radius:9px; cursor:pointer;
@@ -268,6 +275,7 @@
 
   <div class="meta" id="meta" hidden>
     <h2 id="metaTitle"></h2>
+    <span class="totbadge" id="totCitas" hidden></span>
     <span class="stamp" id="stamp"></span>
     <button class="link" id="refresh" type="button">Actualizar</button>
   </div>
@@ -543,16 +551,29 @@ function drawBoard(cols, durMin, busyMap){
   html+=`<div class="headrow" style="grid-template-columns:${gtc}"><div class="corner"></div>`;
   for(const c of cols){
     const tot=c.ranges.reduce((n,r)=>n+r.n,0);
+    const nCitas=((busyMap&&busyMap[c.uid])||[]).filter(k=>k.k==="cita").length;
     html+=`<div class="headcell"><div class="nm">${c.name}</div>
-      <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"ocupada / fuera de turno"}</div></div>`;
+      <div class="st ${tot?"ok":""}">${tot?tot+" opciones":"ocupada / fuera de turno"}</div>
+      ${busyMap?`<div class="ct">${nCitas} ${nCitas===1?"reserva":"reservas"}</div>`:""}</div>`;
   }
   html+=`</div>`;
-  html+=`<div class="bodyrow" style="grid-template-columns:${gtc}"><div class="gutter" style="height:${H}px">`;
-  for(let m=lo;m<=hi;m+=60) html+=`<span class="hourlab" style="top:${(m-lo)*pxmin}px">${fmtMin(m)}</span>`;
-  html+=`</div>`;
+  // total de reservas del día: equipo completo en la vista maestra, individual en la vista por técnica
+  const totBadge=$("totCitas");
+  if(busyMap){
+    const uids = TEAM_FILTER ? TEAM_FILTER : Object.keys(busyMap);
+    let nTot=0; for(const u of uids) nTot += ((busyMap[u])||[]).filter(k=>k.k==="cita").length;
+    totBadge.hidden=false;
+    totBadge.textContent=`🗓 ${nTot} ${nTot===1?"reserva":"reservas"} ${longDate(state.date)}`;
+  }else totBadge.hidden=true;
   const isToday = state.date===prToday();
   const nowP=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
   const nowMin=(+nowP.slice(0,2))*60+(+nowP.slice(3,5));
+  state.gridLo=lo; state.gridHi=hi; state.gridPx=pxmin;   // para mover la línea de "ahora" cada minuto
+  html+=`<div class="bodyrow" style="grid-template-columns:${gtc}"><div class="gutter" style="height:${H}px">`;
+  for(let m=lo;m<=hi;m+=60) html+=`<span class="hourlab" style="top:${(m-lo)*pxmin}px">${fmtMin(m)}</span>`;
+  if(isToday && nowMin>=lo && nowMin<=hi)
+    html+=`<span class="nowlab" id="nowLab" style="top:${(nowMin-lo)*pxmin}px">${fmtMin(nowMin)}</span>`;
+  html+=`</div>`;
   for(let ci=0; ci<cols.length; ci++){
     const c=cols[ci];
     html+=`<div class="col" style="height:${H}px">`;
@@ -868,6 +889,17 @@ document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible" && state.services.length
      && state.loadedAt && Date.now()-state.loadedAt > 3*60*1000) load();
 });
+// La línea dorada de "ahora" se mueve sola cada minuto (sin recargar nada)
+setInterval(()=>{
+  if(state.gridLo==null || state.date!==prToday()) return;
+  const np=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+  const nm=(+np.slice(0,2))*60+(+np.slice(3,5));
+  const dentro = nm>=state.gridLo && nm<=state.gridHi;
+  const top=(nm-state.gridLo)*state.gridPx+"px";
+  document.querySelectorAll(".now").forEach(el=>{ el.style.top=top; el.style.display=dentro?"":"none"; });
+  const nl=document.getElementById("nowLab");
+  if(nl){ nl.style.top=top; nl.textContent=fmtMin(nm); nl.style.display=dentro?"":"none"; }
+},60000);
 
 // Sin servicio predeterminado: la técnica lo escoge siempre.
 renderOptions("");
