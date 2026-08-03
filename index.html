@@ -148,10 +148,18 @@
 
   .busyblock{
     position:absolute; left:5px; right:5px; border-radius:9px; pointer-events:none;
-    background:rgba(229,72,77,.13); border:1px solid rgba(229,72,77,.28);
-    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    background:rgba(126,118,99,.09); border:1px solid rgba(126,118,99,.22);
+    padding:3px 7px; overflow:hidden; text-align:left;
   }
-  .busyblock span{font-size:9.5px; color:#E5484D; font-weight:700; letter-spacing:.07em; text-transform:uppercase; opacity:.8}
+  .busyblock .lb{display:block; font-size:9px; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink-faint); opacity:.85; white-space:nowrap}
+  .busyblock .who{display:block; font-size:11.5px; font-weight:700; color:#F2A9AC; line-height:1.25;
+    white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
+  .busyblock .what{display:block; font-size:9.5px; color:var(--ink-faint);
+    white-space:nowrap; text-overflow:ellipsis; overflow:hidden}
+  .busyblock.cita{background:rgba(229,72,77,.13); border-color:rgba(229,72,77,.28); border-left:4px solid #E5484D}
+  .busyblock.bloq{background:rgba(232,196,104,.09); border-color:rgba(232,196,104,.28); border-left:4px solid var(--lacquer)}
+  .busyblock.bloq .who{color:var(--lacquer)}
 
   /* barra de confirmación de reserva */
   .bookbar{
@@ -248,7 +256,7 @@
   </div>
 
   <footer>
-    <strong>Verde = espacio disponible</strong> · <strong>Rojo = ocupado o fuera de turno</strong>.
+    <strong>Verde = espacio disponible</strong> · <strong>Rojo = cita (con el nombre de la clienta) · dorado = hora bloqueada · gris = fuera de turno</strong>.
     ✨ Con <strong>+ Añadir servicio</strong> puedes combinar varios servicios en <strong>una misma reservación</strong>
     (el verde muestra solo los espacios donde cabe todo seguido con la misma técnica).
     👆 <strong>Dale clic al espacio verde:</strong> si elegiste la clienta arriba, confirmas la hora y la cita
@@ -433,6 +441,23 @@ async function slotsFor(calId, iso, userId){
   const j=await r.json(); const day=j[iso];
   return (day && Array.isArray(day.slots)) ? day.slots.slice().sort() : [];
 }
+async function fetchBusy(iso){
+  // citas y bloqueos del día por técnica (vía Apps Script; el token vive allá).
+  // Si el script aún no tiene action=busy, devuelve null y el rojo queda genérico.
+  try{
+    const r=await fetch(LOOKUP+"?action=busy&date="+iso);
+    const j=await r.json();
+    if(!j.ok || !j.busy) return null;
+    const m={};
+    for(const uid in j.busy){
+      m[uid]=j.busy[uid]
+        .map(x=>({a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w:x.w||"", t:x.t||""}))
+        .filter(x=>x.b>x.a)
+        .sort((p,q)=>p.a-q.a);
+    }
+    return m;
+  }catch(e){ return null; }
+}
 function toRangesM(mins){   // agrupa minutos consecutivos en bloques
   if(!mins.length) return [];
   let step=Infinity;
@@ -446,11 +471,15 @@ function toRangesM(mins){   // agrupa minutos consecutivos en bloques
 }
 
 /* ---------- grilla ---------- */
-function drawBoard(cols, durMin){
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function drawBoard(cols, durMin, busyMap){
   const board=$("board");
   state.cols = cols;
   let lo=Infinity, hi=-Infinity;
-  cols.forEach(c=>c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); }));
+  cols.forEach(c=>{
+    c.ranges.forEach(r=>{ lo=Math.min(lo,r.a); hi=Math.max(hi,r.b+durMin); });
+    ((busyMap&&busyMap[c.uid])||[]).forEach(k=>{ lo=Math.min(lo,k.a); hi=Math.max(hi,k.b); });
+  });
   if(!isFinite(lo)){ board.innerHTML=`<div class="state"><strong>Todo ocupado</strong>Nadie tiene espacio ${state.services.length>1?"donde quepan estos servicios seguidos":"para este servicio"} ${longDate(state.date)}.</div>`; return; }
   lo=Math.floor(lo/60)*60; hi=Math.ceil(hi/60)*60;
   const pxmin=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pxmin"))||1.05;
@@ -475,15 +504,35 @@ function drawBoard(cols, durMin){
     const c=cols[ci];
     html+=`<div class="col" style="height:${H}px">`;
     for(let m=lo;m<=hi;m+=60) html+=`<div class="hline" style="top:${(m-lo)*pxmin}px"></div>`;
-    // ROJO = ocupado o fuera de turno: todo lo que no está verde dentro de la ventana del día
+    // ROJO = lo que no está verde dentro de la ventana del día. Con datos de "busy"
+    // se etiqueta lo que realmente es: cita (nombre de la clienta), bloqueo, o fuera de turno.
     const spans = c.ranges.map(r=>[r.a, r.b+durMin]).sort((x,y)=>x[0]-y[0]);
     let cursor=lo;
     const busy=[];
     for(const [a,b] of spans){ if(a>cursor) busy.push([cursor,a]); cursor=Math.max(cursor,b); }
     if(cursor<hi) busy.push([cursor,hi]);
+    const knowns = ((busyMap&&busyMap[c.uid])||[]);
+    const blk=(a,b,cls,l1,l2)=>{
+      const bh=(b-a)*pxmin; if(bh<6) return "";
+      let inner="";
+      if(bh>=16 && l1) inner+= cls==="off" ? `<span class="lb">${l1}</span>` : `<span class="who">${esc(l1)}</span>`;
+      if(bh>=34 && l2) inner+=`<span class="what">${esc(l2)}</span>`;
+      return `<div class="busyblock ${cls}" style="top:${(a-lo)*pxmin}px;height:${bh}px">${inner}</div>`;
+    };
     for(const [a,b] of busy){
-      const bh=(b-a)*pxmin; if(bh<6) continue;
-      html+=`<div class="busyblock" style="top:${(a-lo)*pxmin}px;height:${bh}px">${bh>30?"<span>Ocupado</span>":""}</div>`;
+      if(!knowns.length){ html+=blk(a,b,"off", busyMap?"Fuera de turno":"Ocupado",""); continue; }
+      let cur=a;
+      for(const k of knowns){
+        const ka=Math.max(k.a,a), kb=Math.min(k.b,b);
+        if(kb<=cur || ka>=b) continue;
+        if(ka>cur) html+=blk(cur,ka,"off","Fuera de turno","");
+        html+=blk(Math.max(ka,cur), kb,
+          k.k==="bloqueo"?"bloq":"cita",
+          k.k==="bloqueo"?(k.t||k.w||"Bloqueado"):(k.w||k.t||"Cita"),
+          k.k==="bloqueo"?"Hora bloqueada":k.t);
+        cur=Math.max(cur,kb);
+      }
+      if(cur<b) html+=blk(cur,b,"off","Fuera de turno","");
     }
     if(isToday && nowMin>=lo && nowMin<=hi) html+=`<div class="now" style="top:${(nowMin-lo)*pxmin}px"></div>`;
     for(let ri=0; ri<c.ranges.length; ri++){
@@ -510,7 +559,7 @@ function openBooking(ci,ri){
     window.open(svcs.length>1 ? MENU : WIDGET(svcs[0].id),"_blank","noopener");
     return;
   }
-  bkSel={c,r,cl};
+  bkSel={c,r,cl,date:state.date};   // fijar el día AHORA: si cambian de día con la barra abierta, no se cruza
   const sel=$("bbHora"); sel.innerHTML="";
   const starts=(c.slots||[]).filter(m=>m>=r.a&&m<=r.b);
   for(const m of (starts.length?starts:[r.a])){
@@ -527,10 +576,11 @@ $("bbNo").addEventListener("click",()=>{ $("bookbar").hidden=true; bkSel=null; }
 $("bbGo").addEventListener("click",async ()=>{
   if(!bkSel) return;
   const {c,cl}=bkSel;
+  const day=bkSel.date;               // el día fijado al abrir la barra, no el que esté elegido ahora
   const m=+$("bbHora").value;
   const hh=String(Math.floor(m/60)).padStart(2,"0"), mm=String(m%60).padStart(2,"0");
   const e2=m+totDur(), eh=String(Math.floor(e2/60)).padStart(2,"0"), em2=String(e2%60).padStart(2,"0");
-  const start=`${state.date}T${hh}:${mm}:00${OFFSET}`, end=`${state.date}T${eh}:${em2}:00${OFFSET}`;
+  const start=`${day}T${hh}:${mm}:00${OFFSET}`, end=`${day}T${eh}:${em2}:00${OFFSET}`;
   const btn=$("bbGo"); btn.disabled=true; btn.textContent="Creando cita…";
   try{
     // UNA cita en el calendario del primer servicio, con la duración total y el título combinado
@@ -539,7 +589,7 @@ $("bbGo").addEventListener("click",async ()=>{
     const r2=await fetch(u); const j=await r2.json();
     if(j.ok){
       btn.textContent="✅ Cita creada";
-      $("bbInfo").innerHTML=`<strong>¡Lista!</strong> ${((cl.fn||"")+" "+(cl.ln||"")).trim()} · ${longDate(state.date)} a las ${fmtMin(m)} con ${c.name}. Le llega su confirmación.`;
+      $("bbInfo").innerHTML=`<strong>¡Lista!</strong> ${((cl.fn||"")+" "+(cl.ln||"")).trim()} · ${longDate(day)} a las ${fmtMin(m)} con ${c.name}. Le llega su confirmación.`;
       setTimeout(()=>{ $("bookbar").hidden=true; bkSel=null; load(); },2600);
     } else {
       btn.disabled=false; btn.textContent="Confirmar cita";
@@ -554,6 +604,7 @@ $("bbGo").addEventListener("click",async ()=>{
 async function load(){
   const svcs=state.services; if(!svcs.length) return;
   const my=++state.reqId;
+  $("bookbar").hidden=true; bkSel=null;   // al recargar/cambiar de día, cerrar la barra para no cruzar días
   $("meta").hidden=false;
   $("metaTitle").textContent=`${svcTitle()} · ${longDate(state.date)}`;
   $("stamp").textContent="";
@@ -565,6 +616,7 @@ async function load(){
     return;
   }
   try{
+    const busyP = fetchBusy(state.date);   // citas/bloqueos del día, en paralelo con los huecos
     // huecos de cada servicio por técnica (entre servicios, pausa corta por el límite de consultas)
     const perSvc=[];                       // perSvc[k] = Map(uid -> Set de minutos libres)
     for(let k=0;k<svcs.length;k++){
@@ -578,9 +630,17 @@ async function load(){
     }
     // una hora de comienzo sirve si cada servicio cabe justo después del anterior con la misma técnica
     const offs=[]; let acc=0; for(const s of svcs){ offs.push(acc); acc+=s.d; }
+    // hoy: no ofrecer horas que ya pasaron (la grilla puede llevar rato abierta)
+    const hoy = state.date===prToday();
+    let nowM=0;
+    if(hoy){
+      const np=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+      nowM=(+np.slice(0,2))*60+(+np.slice(3,5));
+    }
     const cols=team.map(uid=>{
       const first=[...(perSvc[0].get(uid)||[])].sort((a,b)=>a-b);
-      const starts=first.filter(t=>svcs.every((s,k)=>perSvc[k].get(uid).has(t+offs[k])));
+      const starts=first.filter(t=>svcs.every((s,k)=>perSvc[k].get(uid).has(t+offs[k])))
+                        .filter(t=>!hoy || t>=nowM);
       return { uid, name:DATA.staff[uid]||"Técnica", slots:starts, ranges:toRangesM(starts) };
     });
     if(my!==state.reqId) return;
@@ -595,7 +655,10 @@ async function load(){
     }
     const scanned = state.autoScan; state.autoScan=0;
     cols.sort((a,b)=> b.ranges.reduce((n,r)=>n+r.n,0)-a.ranges.reduce((n,r)=>n+r.n,0) || a.name.localeCompare(b.name,"es"));
-    drawBoard(cols, totDur());
+    const busyMap = await busyP;
+    if(my!==state.reqId) return;
+    drawBoard(cols, totDur(), busyMap);
+    state.loadedAt = Date.now();
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
   }catch(err){
@@ -635,12 +698,15 @@ else{
     $("cName").textContent=""; $("cq").value=""; $("cOptions").hidden=true; $("cq").focus();
   });
 }
-async function searchClienta(q){
+let cReqId=0;
+async function searchClienta(q, reintento){
+  const my=++cReqId;
   const ul=$("cOptions");
   ul.innerHTML=`<li class="empty-opt">Buscando…</li>`; ul.hidden=false;
   try{
     const r=await fetch(LOOKUP+"?q="+encodeURIComponent(q));
     const j=await r.json();
+    if(my!==cReqId) return;   // ya hay una búsqueda más nueva — no pisar su resultado
     ul.innerHTML="";
     if(!j.matches || !j.matches.length){
       ul.innerHTML=`<li class="empty-opt">No aparece. Se puede reservar igual y escribir los datos allá.</li>`;
@@ -659,9 +725,18 @@ async function searchClienta(q){
       li.appendChild(b); ul.appendChild(li);
     }
   }catch(e){
+    if(my!==cReqId) return;
+    if(!reintento){ setTimeout(()=>{ if(my===cReqId) searchClienta(q, true); }, 900); return; }
     ul.innerHTML=`<li class="empty-opt">No se pudo buscar ahora (${e.message}).</li>`;
   }
 }
+// Calentar el Apps Script al abrir la página (el primer arranque es lento)
+fetch(LOOKUP+"?q=").catch(()=>{});
+// Si la pestaña estuvo dormida (celular), refrescar para no enseñar horas viejas
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && state.services.length
+     && state.loadedAt && Date.now()-state.loadedAt > 3*60*1000) load();
+});
 
 // Sin servicio predeterminado: la técnica lo escoge siempre.
 renderOptions("");
