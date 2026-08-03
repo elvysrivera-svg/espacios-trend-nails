@@ -451,7 +451,11 @@ async function fetchBusy(iso){
     const m={};
     for(const uid in j.busy){
       m[uid]=j.busy[uid]
-        .map(x=>({a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w:x.w||"", t:x.t||""}))
+        .map(x=>{
+          let w=(x.w||"").trim(), t=(x.t||"").trim();
+          if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
+          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t};
+        })
         .filter(x=>x.b>x.a)
         .sort((p,q)=>p.a-q.a);
     }
