@@ -765,7 +765,12 @@ async function load(){
     // el detalle de citas/bloqueos tarda unos segundos y no debe frenar la grilla
     const durM = general ? GENERAL_SVC.d : totDur();
     drawBoard(cols, durM, busyCached(state.date));
-    busyP.then(bm=>{ if(bm && my===state.reqId) drawBoard(cols, durM, bm); });
+    busyP.then(bm=>{
+      if(my!==state.reqId) return;
+      if(bm){ drawBoard(cols, durM, bm); return; }
+      // si el detalle falló (arranque frío del Apps Script), reintentar UNA vez a los 4 s
+      setTimeout(()=>{ if(my===state.reqId) fetchBusy(state.date).then(b2=>{ if(b2 && my===state.reqId) drawBoard(cols, durM, b2); }); }, 4000);
+    });
     state.loadedAt = Date.now();
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
