@@ -216,6 +216,45 @@
   @media (prefers-reduced-motion:reduce){ .spin{animation-duration:2.4s} }
 
   footer{margin-top:14px; font-size:11px; color:var(--ink-faint); line-height:1.6}
+
+  /* ------- leyenda gráfica ------- */
+  .legend{display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; margin-top:12px;
+    font-size:11.5px; color:var(--ink-soft)}
+  .lgi{display:flex; align-items:center; gap:6px; white-space:nowrap}
+  .sw{width:15px; height:15px; border-radius:4px; flex:0 0 auto}
+  .sw.g{background:var(--jade-soft); border:1px solid var(--jade); border-left:3px solid var(--jade-mid)}
+  .sw.r{background:rgba(229,72,77,.13); border:1px solid rgba(229,72,77,.45); border-left:3px solid #E5484D}
+  .sw.b{background:rgba(232,196,104,.09); border:1px solid rgba(232,196,104,.5); border-left:3px solid var(--lacquer)}
+  .sw.o{background:rgba(126,118,99,.09); border:1px solid rgba(126,118,99,.4)}
+  .sw.n{height:3px; border-radius:2px; background:var(--lacquer); box-shadow:0 0 6px rgba(232,196,104,.55)}
+
+  /* ------- paneles (precios / consejos) ------- */
+  .panel{position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.55); backdrop-filter:blur(3px);
+    display:flex; align-items:flex-end; justify-content:center}
+  .panel[hidden]{display:none}
+  .panel .sheet{background:var(--card); border:1px solid var(--line); border-radius:18px 18px 0 0;
+    max-width:640px; width:100%; max-height:84vh; display:flex; flex-direction:column;
+    box-shadow:0 -12px 40px rgba(0,0,0,.7)}
+  @media (min-width:700px){ .panel{align-items:center; padding:20px} .panel .sheet{border-radius:18px} }
+  .sheet .ph{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line-soft)}
+  .sheet .ph h3{margin:0; font-family:"Cormorant Garamond",Georgia,serif; font-style:italic; font-weight:500; font-size:23px}
+  .sheet .ph .link{margin-left:auto; font-size:14px}
+  .sheet .pb{overflow-y:auto; padding:10px 16px 20px}
+  .sheet .pb input[type="search"]{margin:4px 0 8px}
+  .prow{display:flex; align-items:baseline; gap:10px; padding:9px 2px; border-bottom:1px solid var(--line-soft); font-size:13.5px}
+  .prow .pn{flex:1; line-height:1.3}
+  .prow .pd{color:var(--ink-faint); font-size:11.5px; white-space:nowrap}
+  .prow .pp{font-weight:700; color:var(--lacquer); font-variant-numeric:tabular-nums; white-space:nowrap}
+  .icard{background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--lacquer);
+    border-radius:12px; padding:12px 14px; margin:10px 0; font-size:13.5px; line-height:1.55}
+  .icard h4{margin:0 0 5px; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--lacquer); font-weight:700}
+  .icard .big{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums}
+  .icard.up{border-left-color:var(--jade-mid)}
+  .icard.up h4{color:var(--jade)}
+  .icard.down{border-left-color:#E5484D}
+  .icard.down h4{color:#F2A9AC}
+  .icard .nueva{color:var(--lacquer); font-weight:700}
+
   @media (max-width:640px){ :root{--colw:118px} h1{font-size:23px} }
 </style>
 </head>
@@ -224,6 +263,8 @@
   <header>
     <h1>Espacios disponibles</h1>
     <span class="who-view" id="viewTag">Equipo completo</span>
+    <button class="link" id="priceBtn" type="button">💲 Precios</button>
+    <button class="link" id="insBtn" type="button">💡 Consejos</button>
   </header>
 
   <div class="controls">
@@ -287,16 +328,42 @@
     <div class="state"><strong>Elige un servicio</strong>Puedes añadir más de uno con «+ Añadir servicio» — todo queda en una misma reservación. Los espacios verdes son disponibles.</div>
   </div>
 
+  <div class="legend" aria-label="Leyenda">
+    <span class="lgi"><span class="sw g"></span> Disponible · toca para reservar</span>
+    <span class="lgi"><span class="sw r"></span> Cita · toca para cancelar</span>
+    <span class="lgi"><span class="sw b"></span> Bloqueado</span>
+    <span class="lgi"><span class="sw o"></span> Fuera de turno</span>
+    <span class="lgi"><span class="sw n" style="width:15px"></span> Ahora</span>
+  </div>
   <footer>
-    <strong>Verde = espacio disponible</strong> · <strong>Rojo = cita (con el nombre de la clienta) · dorado = hora bloqueada · gris = fuera de turno</strong>.
-    ✨ Con <strong>+ Añadir servicio</strong> puedes combinar varios servicios en <strong>una misma reservación</strong>
-    (el verde muestra solo los espacios donde cabe todo seguido con la misma técnica).
-    👆 <strong>Dale clic al espacio verde:</strong> si elegiste la clienta arriba, confirmas la hora y la cita
-    queda creada al instante (le llega su confirmación); si no, se abre la página de reserva.
-    🗑 <strong>Para cancelar una cita:</strong> toca su bloque rojo y confirma — queda cancelada en el sistema
-    y el espacio vuelve a verde.
-    Sale directo del calendario al momento; si alguien acaba de reservar, toca <strong>Actualizar</strong>.
+    ✨ <strong>+ Añadir servicio</strong> combina varios en una misma reservación · datos en vivo del calendario —
+    si algo acaba de cambiar, toca <strong>Actualizar</strong>.
   </footer>
+
+  <!-- panel de precios -->
+  <div class="panel" id="pricePanel" hidden>
+    <div class="sheet">
+      <div class="ph">
+        <h3>Lista de precios</h3>
+        <button class="link" id="priceClose" type="button">Cerrar ✕</button>
+      </div>
+      <div class="pb">
+        <input type="search" id="priceQ" placeholder="Busca el servicio…" autocomplete="off">
+        <div id="priceList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- panel de consejos -->
+  <div class="panel" id="insPanel" hidden>
+    <div class="ph-wrap sheet">
+      <div class="ph">
+        <h3 id="insTitle">Consejos de la semana</h3>
+        <button class="link" id="insClose" type="button">Cerrar ✕</button>
+      </div>
+      <div class="pb" id="insBody"></div>
+    </div>
+  </div>
 
   <div class="bookbar" id="bookbar" hidden>
     <div class="info" id="bbInfo"></div>
@@ -983,6 +1050,126 @@ setInterval(()=>{
   const nl=document.getElementById("nowLab");
   if(nl){ nl.style.top=top; nl.textContent=fmtMin(nm); nl.style.display=dentro?"":"none"; }
 },60000);
+
+/* ---------- 💲 lista de precios ---------- */
+function renderPrices(term){
+  const t=norm((term||"").trim());
+  const list=DATA.services.filter(s=>!t || norm(s.n).includes(t));
+  $("priceList").innerHTML = list.length ? list.map(s=>
+    `<div class="prow"><span class="pn">${esc(s.n)}</span><span class="pd">${fmtDur(s.d)}</span>`+
+    `<span class="pp">${PRICE[s.id]?`desde $${PRICE[s.id]}`:"según diseño"}</span></div>`
+  ).join("") : `<div class="empty-opt">Ningún servicio con “${esc(term)}”.</div>`;
+}
+$("priceBtn").addEventListener("click",()=>{ renderPrices(""); $("priceQ").value=""; $("pricePanel").hidden=false; $("priceQ").focus(); });
+$("priceClose").addEventListener("click",()=>{ $("pricePanel").hidden=true; });
+$("pricePanel").addEventListener("click",e=>{ if(e.target.id==="pricePanel") $("pricePanel").hidden=true; });
+$("priceQ").addEventListener("input",e=>renderPrices(e.target.value));
+
+/* ---------- 💡 consejos de la semana ---------- */
+/* Consejos curados (se rotan solos: uno distinto cada día, estable durante el día).
+   Basados en lo que retiene clientas en salones: primera impresión, relación de confianza,
+   re-agendar antes de irse, reseñas y tarjeta de puntos. */
+const TIPS_TEC=[
+  "🧼 <strong>La mesa habla primero.</strong> Antes de cada clienta: mesa limpia, herramientas ordenadas, toalla fresca. La primera impresión decide si vuelve.",
+  "📅 <strong>Re-agenda antes de que se vaya.</strong> Al cobrar, ofrécele apartar su próxima cita: «¿Te guardo este mismo horario en 3 semanas?» Es la forma #1 de llenar tu agenda.",
+  "⭐ <strong>Pide la reseña en el momento feliz.</strong> Cuando le encanten sus uñas, ahí mismo: «¿Me regalas una reseña en Google? Me ayuda muchísimo».",
+  "💳 <strong>Ofrece la tarjeta de puntos.</strong> A toda clienta nueva, menciónala: la clienta que acumula, regresa.",
+  "📸 <strong>Foto del trabajo terminado</strong> (con su permiso). Alimenta tu portafolio y a ella le encanta compartirlas.",
+  "🤝 <strong>Vende confianza, no solo un servicio.</strong> Las técnicas con agenda llena mantienen una relación: recuerdan el nombre, la ocasión, el color que le gustó la vez pasada.",
+  "👂 <strong>Escucha más de lo que hablas.</strong> Deja que la conversación sea de ella; una clienta que se sintió escuchada, vuelve.",
+  "💅 <strong>Sugerencia suave, no presión:</strong> «Con este color, una parafina te dejaría las manos divinas» — el extra se ofrece una vez y con cariño.",
+  "⏰ <strong>Si vas atrasada, avisa.</strong> Un mensaje de «dame 10 minutitos» convierte una molestia en un detalle de respeto.",
+  "🎨 <strong>¿Clienta indecisa?</strong> No le des el catálogo entero: ofrécele DOS opciones concretas que le queden bien. Decidir fácil = experiencia buena.",
+  "💧 <strong>El detalle final cuenta:</strong> aceite de cutícula, crema y un consejo de cuidado en casa. Ese minuto extra se recuerda.",
+  "😊 <strong>La clienta callada también evalúa.</strong> Sonríe, explica lo que vas haciendo y pregunta si está cómoda.",
+];
+const TIPS_ADMIN=[
+  "📈 <strong>Retener es más barato que conseguir.</strong> Subir la retención un 5% puede aumentar la ganancia hasta 25%+ — cuida a las fijas tanto como buscas nuevas.",
+  "🕳️ <strong>Huecos de hoy = ingresos perdidos.</strong> Una oferta relámpago por WhatsApp en las horas muertas llena espacios que ya no se venden mañana.",
+  "🏆 <strong>Reconoce a la técnica de la semana</strong> en voz alta. Lo que se celebra, se repite.",
+  "🌱 <strong>Las clientas nuevas de hoy son el negocio de mañana.</strong> Un mensaje de seguimiento a las 48h («¿cómo te sientes con tus uñas?») multiplica que regresen.",
+  "⭐ <strong>Las reseñas se piden el mismo día</strong> — después se olvida. Ponlo como hábito del equipo al cobrar.",
+  "📅 <strong>Mide el re-agendado:</strong> ¿cuántas clientas salen con la próxima cita apartada? Esa es la métrica #1 de retención de un salón.",
+  "📣 <strong>Los días flojos se llenan con ofertas de ese día</strong> — como tus martes de Pedicura Spa. Replica la fórmula en el día más flojo del mes.",
+  "📸 <strong>Antes/después vende solo.</strong> Pide al equipo 2-3 fotos buenas por semana para redes.",
+  "💤 <strong>Clientas con 90+ días sin venir:</strong> campaña «te extrañamos» con un detalle. Recuperar una fija vale más que un clic nuevo.",
+  "🚫 <strong>Vigila los no-shows por técnica y por día.</strong> Si se repiten en un patrón, el problema es de proceso, no de la clienta.",
+];
+function dayIndex(){ const d=new Date(); return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5); }
+function uidHash(u){ let h=0; for(const ch of (u||"")) h=(h*31+ch.charCodeAt(0))>>>0; return h; }
+function pickTips(arr,seed,n){ const out=[]; for(let i=0;i<n;i++) out.push(arr[(seed+i)%arr.length]); return out; }
+
+let insCache=null, insCacheAt=0;
+$("insBtn").addEventListener("click",openInsights);
+$("insClose").addEventListener("click",()=>{ $("insPanel").hidden=true; });
+$("insPanel").addEventListener("click",e=>{ if(e.target.id==="insPanel") $("insPanel").hidden=true; });
+async function openInsights(){
+  const uid = TEAM_FILTER ? TEAM_FILTER[0] : null;
+  $("insTitle").textContent = uid ? `Consejos para ${DATA.staff[uid]}` : "Consejos del negocio";
+  $("insPanel").hidden=false;
+  $("insBody").innerHTML=`<div class="state"><div class="spin"></div>Leyendo tu semana…</div>`;
+  try{
+    let j=insCache;
+    if(!j || Date.now()-insCacheAt>10*60*1000){
+      const r=await fetch(LOOKUP+"?action=insights&date="+prToday());
+      j=await r.json();
+      if(j.matches!==undefined) { $("insBody").innerHTML=`<div class="state"><strong>Falta publicar la actualización del sistema (v5)</strong>Los consejos con datos se encienden cuando Elvys publique la nueva versión.</div>`+tipsHtml(uid); return; }
+      if(!j.ok) throw new Error(j.error||"error");
+      insCache=j; insCacheAt=Date.now();
+    }
+    $("insBody").innerHTML = buildInsights(j, uid) + tipsHtml(uid);
+  }catch(e){
+    $("insBody").innerHTML=`<div class="state"><strong>No se pudo leer la semana</strong>(${esc(e.message)}) — los consejos del día sí están abajo.</div>`+tipsHtml(uid);
+  }
+}
+function tipsHtml(uid){
+  const arr = uid ? TIPS_TEC : TIPS_ADMIN;
+  const tips = pickTips(arr, dayIndex()+uidHash(uid||"admin"), 2);
+  return tips.map(t=>`<div class="icard"><h4>Consejo del día</h4>${t}</div>`).join("");
+}
+function sumRev(list){ let n=0,s=0; for(const k of list){ n++; s+=citaPrice(k); } return {n,s}; }
+function dowISO(iso){ const d=new Date(iso.slice(0,10)+"T12:00:00Z"); return (d.getUTCDay()+6)%7; } // 0=Lun
+function buildInsights(j, uid){
+  const hoy=prToday(), dowHoy=dowISO(hoy+"T");
+  const cur=j.cur||{}, prev=j.prev||{}, nuevas=j.nuevas||{};
+  const uids = uid ? [uid] : Object.keys(DATA.staff).filter(u=>DATA.staff[u]!=="Elvys");
+  let curAll=[], prevAll=[];
+  for(const u of uids){ curAll=curAll.concat(cur[u]||[]); prevAll=prevAll.concat(prev[u]||[]); }
+  // comparación justa: semana pasada solo hasta el mismo día de la semana
+  const prevCut=prevAll.filter(k=>dowISO(k.s)<=dowHoy);
+  const a=sumRev(curAll), b=sumRev(prevCut);
+  let cards="";
+  // 1) la semana
+  const diff = b.n ? Math.round((a.n-b.n)/b.n*100) : (a.n?100:0);
+  const cls = a.n>=b.n ? "up" : "down";
+  const quien = uid ? "Llevas" : "El equipo lleva";
+  cards+=`<div class="icard ${cls}"><h4>${uid?"Tu semana":"La semana del salón"}</h4>
+    <span class="big">${a.n} ${a.n===1?"reserva":"reservas"}${a.s?` · ≈$${a.s}`:""}</span><br>
+    ${quien} ${a.n>=b.n?"más":"menos"} que la semana pasada a esta altura
+    (${b.n} ${b.n===1?"reserva":"reservas"}${b.s?` · ≈$${b.s}`:""}${b.n?` — ${diff>0?"+":""}${diff}%`:""}).
+    ${a.n>=b.n?"¡Sigue así! 💪":"Aún hay días para remontar — revisa los huecos libres y ofrece re-agendar."}</div>`;
+  // 2) hoy
+  const hoyList=curAll.filter(k=>k.s.slice(0,10)===hoy);
+  const h=sumRev(hoyList);
+  cards+=`<div class="icard"><h4>Hoy</h4><span class="big">${h.n} ${h.n===1?"reserva":"reservas"}${h.s?` · ≈$${h.s}`:""}</span></div>`;
+  // 3) clientas nuevas de hoy
+  let nuevasList=[];
+  for(const u of uids) for(const nm of (nuevas[u]||[])) nuevasList.push(uid?nm:`${nm} (con ${DATA.staff[u]})`);
+  if(nuevasList.length){
+    cards+=`<div class="icard"><h4>Clientas nuevas hoy</h4>
+      ${nuevasList.map(n=>`<span class="nueva">${esc(n)}</span>`).join(" · ")}<br>
+      Primera visita: preséntate, explica lo que vas a hacer y ofrécele la <strong>tarjeta de puntos</strong>.
+      Una primera cita bien atendida es una clienta fija. 🌟</div>`;
+  }
+  // 4) top del equipo (solo versión completa)
+  if(!uid){
+    let top=null, topN=-1;
+    for(const u of uids){ const n=(cur[u]||[]).length; if(n>topN){ topN=n; top=u; } }
+    if(top && topN>0) cards+=`<div class="icard up"><h4>Técnica de la semana</h4>
+      <strong>${DATA.staff[top]}</strong> va al frente con ${topN} ${topN===1?"reserva":"reservas"}. Un reconocimiento a tiempo vale oro. 🏆</div>`;
+  }
+  return cards;
+}
 
 // Sin servicio predeterminado: la técnica lo escoge siempre.
 renderOptions("");
