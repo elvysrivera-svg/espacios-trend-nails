@@ -1213,9 +1213,17 @@ function showToast(title, html){
 async function initTips(){
   try{
     const uid = TEAM_FILTER ? TEAM_FILTER[0] : null;
-    const r=await fetch(LOOKUP+"?action=insights&date="+prToday());
-    const j=await r.json();
-    if(!j.ok || j.matches!==undefined) return;          // v5 sin publicar o error: sin pop-up
+    // Google a veces contesta con una página de error en vez de datos: reintentar hasta 3 veces
+    let j=null;
+    for(let i=0;i<3 && !j;i++){
+      if(i) await new Promise(z=>setTimeout(z,2600));
+      try{
+        const r=await fetch(LOOKUP+"?action=insights&date="+prToday());
+        const p=JSON.parse(await r.text());
+        if(p.ok) j=p;
+      }catch(e){}
+    }
+    if(!j) return;                                      // v5 sin publicar o error persistente: sin pop-up
     insCache=j; insCacheAt=Date.now();
     const uids = uid ? [uid] : Object.keys(DATA.staff).filter(u=>DATA.staff[u]!=="Elvys");
     let nuevas=[];
