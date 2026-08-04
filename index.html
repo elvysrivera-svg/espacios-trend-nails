@@ -1213,10 +1213,12 @@ function showToast(title, html){
 async function initTips(){
   try{
     const uid = TEAM_FILTER ? TEAM_FILTER[0] : null;
-    // Google a veces contesta con una página de error en vez de datos: reintentar hasta 3 veces
-    let j=null;
-    for(let i=0;i<3 && !j;i++){
-      if(i) await new Promise(z=>setTimeout(z,2600));
+    // Google a veces contesta con una página de error en vez de datos (viene en ráfagas):
+    // reusar lo ya cargado si existe, y si no, reintentar con esperas crecientes.
+    let j = (insCache && Date.now()-insCacheAt < 10*60*1000) ? insCache : null;
+    const esperas=[0, 3000, 6000, 10000];
+    for(let i=0;i<esperas.length && !j;i++){
+      if(esperas[i]) await new Promise(z=>setTimeout(z,esperas[i]));
       try{
         const r=await fetch(LOOKUP+"?action=insights&date="+prToday());
         const p=JSON.parse(await r.text());
