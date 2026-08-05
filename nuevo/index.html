@@ -594,7 +594,37 @@ async function qPump(){
 }
 /* Memoria de huecos (60 s): añadir un servicio o volver a un día reciente no re-consulta lo ya pedido. */
 const slotCache={};
-function slotCacheDrop(iso){ for(const k in slotCache){ if(k.includes("|"+iso+"|")) delete slotCache[k]; } }
+function slotCacheDrop(iso){
+  for(const k in slotCache){ if(k.includes("|"+iso+"|")) delete slotCache[k]; }
+  slotFresh.add(iso);   // y que el servidor tampoco nos dé lo cacheado de ese día
+}
+
+/* ⚡ Los huecos de TODAS las técnicas en UNA sola consulta.
+   Antes el celular de cada técnica le pedía a GHL una vez POR TÉCNICA (9 consultas por
+   servicio, y más al añadir servicios): de ahí la grilla lenta y el "muchas consultas".
+   Ahora lo junta el servidor, y además queda cacheado allá 60 s: si tres técnicas abren
+   el mismo día, solo la primera consulta de verdad.
+   Devuelve [[uid, Set(minutos)], …] — lo mismo que esperaba el código de antes. */
+async function huecosEquipo(calId, iso, team){
+  const key = calId+"|"+iso+"|"+team.join(",");
+  const hit = slotCache[key];
+  if(hit && Date.now()-hit.at < 60000) return hit.rows;
+  const u = new URL(LOOKUP);
+  u.searchParams.set("action","slots");
+  u.searchParams.set("cal", calId);
+  u.searchParams.set("date", iso);
+  u.searchParams.set("u", team.join(","));
+  if(slotFresh.has(iso)) u.searchParams.set("fresh","1");
+  const r = await fetch(u.toString());
+  const j = await r.json();
+  if(!j || !j.ok) throw new Error(j && j.error ? j.error : "HTTP "+r.status);
+  slotFresh.delete(iso);
+  const rows = team.map(uid => [uid, new Set(j.libres[uid] || [])]);
+  slotCache[key] = {at:Date.now(), rows};
+  return rows;
+}
+/* Días cuyos huecos hay que pedir SIN caché (tras reservar, cancelar o tocar Actualizar). */
+const slotFresh = new Set();
 async function slotsFor(calId, iso, userId){
   const key=calId+"|"+iso+"|"+(userId||"");
   const hit=slotCache[key];
@@ -866,10 +896,7 @@ async function load(){
     // huecos de cada servicio por técnica (entre servicios, pausa corta por el límite de consultas)
     const perSvc=[];                       // perSvc[k] = Map(uid -> Set de minutos libres)
     for(let k=0;k<svcs.length;k++){
-      const rows=await Promise.all(team.map(async uid=>{
-        const raw=await slotsFor(svcs[k].id,state.date,uid);
-        return [uid, new Set(raw.map(minOfDay))];
-      }));
+      const rows=await huecosEquipo(svcs[k].id, state.date, team);
       if(my!==state.reqId) return;
       perSvc.push(new Map(rows));
     }
