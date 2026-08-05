@@ -594,37 +594,51 @@ async function qPump(){
 }
 /* Memoria de huecos (60 s): añadir un servicio o volver a un día reciente no re-consulta lo ya pedido. */
 const slotCache={};
-function slotCacheDrop(iso){
-  for(const k in slotCache){ if(k.includes("|"+iso+"|")) delete slotCache[k]; }
-  slotFresh.add(iso);   // y que el servidor tampoco nos dé lo cacheado de ese día
-}
+/* Tras reservar o cancelar, la disponibilidad cambió: se olvida TODO el tramo
+   (la caché ya no es por día, sino por servicio+equipo con 14 días dentro). */
+function slotCacheDrop(iso){ for(const k in slotCache) delete slotCache[k]; }
 
-/* ⚡ Los huecos de TODAS las técnicas en UNA sola consulta.
-   Antes el celular de cada técnica le pedía a GHL una vez POR TÉCNICA (9 consultas por
-   servicio, y más al añadir servicios): de ahí la grilla lenta y el "muchas consultas".
-   Ahora lo junta el servidor, y además queda cacheado allá 60 s: si tres técnicas abren
-   el mismo día, solo la primera consulta de verdad.
-   Devuelve [[uid, Set(minutos)], …] — lo mismo que esperaba el código de antes. */
+/* ⚡ Los huecos de DOS SEMANAS de una vez, por técnica.
+   El desperdicio no eran las consultas en paralelo (medido: 8 a la vez tardan 2 s desde
+   el celular y ninguna da 429). Era pedir los huecos DÍA POR DÍA: cada vez que la técnica
+   cambiaba de día, otras 8 consultas. GHL devuelve un rango entero en la misma llamada,
+   así que ahora pedimos 14 días de golpe y cambiar de día no consulta NADA.
+   (Probado en la página de las clientas: por eso esa vuela.)
+   ⚠️ NO mover esto al Worker: desde las IPs de Cloudflare este endpoint tarda 7-10 s. */
+const DIAS_TRAMO = 14;
 async function huecosEquipo(calId, iso, team){
-  const key = calId+"|"+iso+"|"+team.join(",");
+  const key = calId+"|"+team.join(",");
   const hit = slotCache[key];
-  if(hit && Date.now()-hit.at < 60000) return hit.rows;
-  const u = new URL(LOOKUP);
-  u.searchParams.set("action","slots");
-  u.searchParams.set("cal", calId);
-  u.searchParams.set("date", iso);
-  u.searchParams.set("u", team.join(","));
-  if(slotFresh.has(iso)) u.searchParams.set("fresh","1");
-  const r = await fetch(u.toString());
-  const j = await r.json();
-  if(!j || !j.ok) throw new Error(j && j.error ? j.error : "HTTP "+r.status);
-  slotFresh.delete(iso);
-  const rows = team.map(uid => [uid, new Set(j.libres[uid] || [])]);
-  slotCache[key] = {at:Date.now(), rows};
-  return rows;
+  if(hit && Date.now()-hit.at < 120000 && hit.dias[iso] !== undefined)
+    return team.map(uid => [uid, new Set((hit.dias[iso] || {})[uid] || [])]);
+
+  const desde = prToday();
+  const a = Date.parse(desde+"T00:00:00"+OFFSET);
+  const b = Date.parse(addDays(desde, DIAS_TRAMO-1)+"T23:59:59"+OFFSET);
+  const listas = await Promise.all(team.map(async uid => {
+    const url = `https://backend.leadconnectorhq.com/calendars/${calId}/free-slots`
+              + `?startDate=${a}&endDate=${b}&timezone=${encodeURIComponent(TZ)}`
+              + `&sendSeatsPerSlot=false&userId=${uid}`;
+    const r = await qFetch(url);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  }));
+
+  const dias = {};
+  team.forEach((uid, i) => {
+    const j = listas[i] || {};
+    for(const f in j){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(f)) continue;
+      const sl = (j[f] && Array.isArray(j[f].slots)) ? j[f].slots : [];
+      (dias[f] = dias[f] || {})[uid] = sl.map(minOfDay).sort((x,y)=>x-y);
+    }
+  });
+  // los días sin huecos no vienen en la respuesta: los marcamos vacíos igual
+  for(let k=0;k<DIAS_TRAMO;k++){ const f=addDays(desde,k); if(!dias[f]) dias[f]={}; }
+
+  slotCache[key] = {at:Date.now(), dias};
+  return team.map(uid => [uid, new Set((dias[iso] || {})[uid] || [])]);
 }
-/* Días cuyos huecos hay que pedir SIN caché (tras reservar, cancelar o tocar Actualizar). */
-const slotFresh = new Set();
 async function slotsFor(calId, iso, userId){
   const key=calId+"|"+iso+"|"+(userId||"");
   const hit=slotCache[key];
