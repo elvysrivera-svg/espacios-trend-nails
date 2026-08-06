@@ -632,6 +632,40 @@ function cargarHuecos(){
   }catch(e){}
 }
 cargarHuecos();
+
+/* ⚡ Lo PRECALCULADO por el Worker (un cron cada 5 min lo deja hecho en KV).
+   Es para la PRIMERA apertura del día, cuando este teléfono no tiene nada guardado:
+   MEDIDO el 6-ago, pedirle a GHL los 14 días × 8 técnicas en frío tardó 16 s (una sola
+   técnica se llevó 14.7 s). Leer la clave del Worker son ~250 ms, que es la latencia pura.
+   Se pide UNA vez al abrir, en paralelo con todo lo demás. Si no hay nada (KV sin enlazar,
+   cron sin correr, o marcado sucio tras una reserva), devuelve ok:false y no pasa nada:
+   la página se va por el camino de siempre. */
+const PRE_SIRVE = 15*60*1000;      // el cron lo rehace cada 5 min; 15 es margen de sobra
+let prePedido = null;
+function pedirPre(){
+  if(!prePedido) prePedido = fetch(LOOKUP+"?action=pre")
+    .then(r => r.json())
+    .then(j => { if(j && j.ok && j.busy) sembrarBusy(j.busy); return j; })
+    .catch(() => null);
+  return prePedido;
+}
+pedirPre();
+
+/* Recorta lo precalculado a las técnicas de ESTA vista (la maestra las quiere todas,
+   un enlace ?t=jahaira solo la suya). Si el servicio o el equipo no encajan, null. */
+function dePre(pre, calId, team){
+  if(!pre || !pre.ok || pre.sucio) return null;
+  if(pre.cal !== calId) return null;
+  if(Date.now() - (pre.at||0) > PRE_SIRVE) return null;
+  if(!team.every(u => (pre.team||[]).includes(u))) return null;
+  const dias = {};
+  for(const f in pre.dias){
+    dias[f] = {};
+    for(const u of team) if(pre.dias[f][u]) dias[f][u] = pre.dias[f][u];
+  }
+  return dias;
+}
+
 const refrescando = new Set();
 /* ⚠️ El refresco NO borra lo guardado antes de tener lo nuevo: si lo borrara, la técnica
    se quedaría mirando una pantalla vacía mientras GHL contesta (bug medido: 13.9 s).
@@ -687,6 +721,20 @@ async function huecosEquipo(calId, iso, team){
     if(edad < SIRVE){ refrescarPorDetras(calId, team); return filasDe(hit, iso, team); }
   }
 
+  /* Este teléfono no tiene nada guardado (primera vez del día, o móvil nuevo):
+     antes de pagar los 16 s de GHL, mirar lo que el cron dejó hecho. */
+  const pre = await pedirPre();
+  const dias0 = dePre(pre, calId, team);
+  if(dias0 && dias0[iso] !== undefined){
+    /* Se guarda con la hora del PRECÁLCULO, no con la de ahora: así vale la misma escalera
+       de frescura de siempre y, si ya pasaron 2 min, se refresca por detrás como cualquier
+       otro dato viejo. Nunca se hace pasar por recién traído. */
+    slotCache[key] = {at: pre.at, dias: dias0};
+    guardarHuecos();
+    if(Date.now() - pre.at >= FRESCO) refrescarPorDetras(calId, team);
+    return filasDe({dias:dias0}, iso, team);
+  }
+
   const dias = await traerHuecos(calId, team);
 
   slotCache[key] = {at:Date.now(), dias};
@@ -710,25 +758,37 @@ async function slotsFor(calId, iso, userId){
 }
 const busyCache={};   // por fecha, 2 min — cambiar de día y volver no re-consulta
 function busyCached(iso){ const e=busyCache[iso]; return (e && Date.now()-e.at<120000) ? e.map : null; }
+/* Pasa el "ocupado" crudo del Worker a lo que dibuja la grilla. Lo usan fetchBusy y
+   el sembrado de lo precalculado, para que las etiquetas salgan en la PRIMERA pintada. */
+function mapBusy(crudo){
+  const m={};
+  for(const uid in crudo){
+    m[uid]=crudo[uid]
+      .map(x=>{
+        let w=(x.w||"").trim(), t=(x.t||"").trim();
+        if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
+        return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||"", id:x.id||""};
+      })
+      .filter(x=>x.b>x.a)
+      .sort((p,q)=>p.a-q.a);
+  }
+  return m;
+}
+/* Solo siembra días que aún no tengan nada: nunca pisa algo más reciente ya consultado. */
+function sembrarBusy(busy){
+  for(const iso in busy){
+    if(busyCache[iso]) continue;
+    try{ busyCache[iso]={at:Date.now(), map:mapBusy(busy[iso])}; }catch(e){}
+  }
+}
 async function fetchBusy(iso){
-  // citas y bloqueos del día por técnica (vía Apps Script; el token vive allá).
-  // Si el script aún no tiene action=busy, devuelve null y el rojo queda genérico.
+  // citas y bloqueos del día por técnica (vía el Worker; el token vive allá).
   const hit=busyCached(iso); if(hit) return hit;
   try{
     const r=await fetch(LOOKUP+"?action=busy&date="+iso);
     const j=await r.json();
     if(!j.ok || !j.busy) return null;
-    const m={};
-    for(const uid in j.busy){
-      m[uid]=j.busy[uid]
-        .map(x=>{
-          let w=(x.w||"").trim(), t=(x.t||"").trim();
-          if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
-          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||"", id:x.id||""};
-        })
-        .filter(x=>x.b>x.a)
-        .sort((p,q)=>p.a-q.a);
-    }
+    const m=mapBusy(j.busy);
     busyCache[iso]={at:Date.now(), map:m};
     return m;
   }catch(e){ return null; }
