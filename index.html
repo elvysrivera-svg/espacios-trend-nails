@@ -407,7 +407,7 @@ const DATA = {"staff":{"BQsJfxc8p7gXwVbXN996":"Rosemarie","3L3JPYqRxqqhMKJMnlDP"
 const PRICE={"1x6JRye2SFhLFoOAa87j":38,"22rzDXrEGL04Nkcof6Ia":75,"3jV9KtHYF25GsYqjZ5il":5,"4VT3qJkcujmIjYhqMWpU":15,"6vwMRZmxKYCBKviNyZep":75,"7tuGa7ycIYAp4tkRScjq":15,"7zeNjsutWO7bwiN10qwn":29,"8Dpm5uidS3s3b9WKEp2g":55,"8X2uRNOG4VCBsWgVwdBy":10,"9NrzbWzFWcLi5aoPIoJ5":25,"ARFI4hy7jZp1PVOeBwGT":75,"AuODJ11avkPJ7ls9tVic":60,"Bp2loHDTJk54PLL3tuYA":60,"CBZW9ulf4PCajsdLBPeR":50,"CZpZF1TjztJIf7p9ZkXN":20,"CxIvpmCa1vHvCiBhRNxQ":30,"D92UuxcnIIIiWQkboc8n":35,"EezPB3sITJuJSzrRYoW9":3,"Ez5uHFB94nW8Y97m5mc1":40,"FOe7WXIxIJz6WURq8X73":75,"GtuYTWr3EAWSJpm9FSe7":55,"Gx3i4M1pv69zqBpi03N1":65,"Hx1Zoy1sawYoo5SZMysC":10,"Kw76D0PFGGx4vO0IBY5B":50,"LADpMPGYHsRHlZlUca1v":60,"LeBl4UWcZ0B5jm0xnklM":70,"N0xlx7HF1swl6xG7Z6EI":65,"RFReaX7pmFEbZyC94zqY":50,"RV1uhwh4E0KHqkdG7AZl":70,"Sxv2mlMxsfWCwyigN1SB":65,"ToQbIYacEvAQgWgKGrKe":65,"WTkToNpniEBxpfQvkFSl":50,"WkSvlK7a52WGdejjwHy0":65,"YPqpcCo9nEPnwCHf4PG5":4,"aBNT8juNjHCiWNyeP77c":25,"adP4ePXrCRnUpJEF75yN":45,"aoEm0pl0DZVHJRu5yh8s":50,"avtlL5MRbaddOnvKrhAQ":50,"beBgKZovv7Ff64cNySiw":55,"bxQ82vpM4AnSV1LHLYVj":55,"cD4dawqBzxW4QbrMdkNX":85,"dNLv41IF9boLAksKczIP":15,"dkaIGgCvndiYkh9YQhAn":75,"eGe9PYICNx0cGoHcFmnH":45,"egdNu5KMi6vBCQ6kgcb4":35,"fbVJ7kIyGm8xxrCIGAie":40,"g36RaezJv7mpr25eCRpU":10,"gPMjdoKgYxBfeiWwcLzG":15,"gUqhOrD1oRxDyBILQFCf":30,"hnpIXeiI3sSkalYU2XuN":10,"iFTIlSN50BZ3Fu840Eyh":60,"icjh1tVET66Z01537Wuo":5,"jOVGwRWT4yWWNKY38nPX":60,"kAeKnqoJrT5gIQWsOM2s":10,"lkL37TRj1Kl1JgFuEALH":15,"mHR0N7KD6F0AERAPq6p9":25,"mRJvYqrjm2ua43v5rUFq":3,"n9mew9JrgjOiGgTLTIQj":50,"nPPZX2YnjM5NvNb8vCjx":45,"pBFwHIArqgsyaaXuqy83":60,"pwPUQqHl0ZUgasIkwURV":45,"qCcAONbuDombNG0Zxp1O":15,"qEhkAcZFgWoJQ9FAemJW":10,"qMbHXWozStOI9d8HGdlA":8,"sRwJjdMQ1YsvkERKMAp8":55,"wu9pvYRkckJDgmCy4lqy":55,"xicaGPKmYL6fcxfuF5bw":45,"yXEl9MSGuUE3CBJa4osZ":20};
 const MENU = "https://link.eraconsultingpr.com/widget/service-menus/trend-nails-salon?lang=es";
 const TZ = "America/Puerto_Rico", OFFSET = "-04:00", DAYS_AHEAD = 14;
-const LOOKUP = "https://script.google.com/macros/s/AKfycbyMlXSef1PKEIapZwk4O5rYV0uAYDkVImeDLTGJgEk3lb0mlpPmySy00S9aSScZXR3oKw/exec"; // endpoint de búsqueda de clientas (Apps Script)
+const LOOKUP = "https://trend-nails-tablero.elvysrivera.workers.dev"; // endpoint de búsqueda de clientas (Apps Script)
 const WIDGET = id => {
   let u = `https://link.eraconsultingpr.com/widget/booking/${id}?lang=es`;
   const c = state.clienta;
@@ -594,7 +594,153 @@ async function qPump(){
 }
 /* Memoria de huecos (60 s): añadir un servicio o volver a un día reciente no re-consulta lo ya pedido. */
 const slotCache={};
-function slotCacheDrop(iso){ for(const k in slotCache){ if(k.includes("|"+iso+"|")) delete slotCache[k]; } }
+/* Tras reservar o cancelar, la disponibilidad cambió: se olvida TODO el tramo
+   (la caché ya no es por día, sino por servicio+equipo con 14 días dentro). */
+function slotCacheDrop(iso){
+  for(const k in slotCache) delete slotCache[k];
+  try{ localStorage.removeItem("tn-huecos"); }catch(e){}
+}
+
+/* ⚡ Los huecos de DOS SEMANAS de una vez, por técnica.
+   El desperdicio no eran las consultas en paralelo (medido: 8 a la vez tardan 2 s desde
+   el celular y ninguna da 429). Era pedir los huecos DÍA POR DÍA: cada vez que la técnica
+   cambiaba de día, otras 8 consultas. GHL devuelve un rango entero en la misma llamada,
+   así que ahora pedimos 14 días de golpe y cambiar de día no consulta NADA.
+   (Probado en la página de las clientas: por eso esa vuela.)
+   ⚠️ NO mover esto al Worker: desde las IPs de Cloudflare este endpoint tarda 7-10 s. */
+const DIAS_TRAMO = 14;
+const FRESCO = 120000;              // 2 min: se usa tal cual
+const SIRVE  = 12*3600*1000;        // 12 h: se pinta YA y se refresca por detrás
+
+/* El tablero guarda lo último que vio en el propio celular. Al abrirlo, pinta ESO al
+   instante (0 s) y consulta a GHL por detrás; cuando llega lo fresco, se redibuja solo.
+   La técnica nunca ve una pantalla en blanco esperando a GHL. */
+function filasDe(hit, iso, team){
+  return team.map(uid => [uid, new Set((hit.dias[iso] || {})[uid] || [])]);
+}
+function guardarHuecos(){
+  try{
+    const chico = {};
+    for(const k in slotCache) chico[k] = slotCache[k];
+    localStorage.setItem("tn-huecos", JSON.stringify({at:Date.now(), c:chico}));
+  }catch(e){}
+}
+function cargarHuecos(){
+  try{
+    const g = JSON.parse(localStorage.getItem("tn-huecos") || "null");
+    if(g && g.c && Date.now()-g.at < SIRVE) for(const k in g.c) slotCache[k] = g.c[k];
+  }catch(e){}
+}
+cargarHuecos();
+
+/* ⚡ Lo PRECALCULADO por el Worker (un cron cada 5 min lo deja hecho en KV).
+   Es para la PRIMERA apertura del día, cuando este teléfono no tiene nada guardado:
+   MEDIDO el 6-ago, pedirle a GHL los 14 días × 8 técnicas en frío tardó 16 s (una sola
+   técnica se llevó 14.7 s). Leer la clave del Worker son ~250 ms, que es la latencia pura.
+   Se pide UNA vez al abrir, en paralelo con todo lo demás. Si no hay nada (KV sin enlazar,
+   cron sin correr, o marcado sucio tras una reserva), devuelve ok:false y no pasa nada:
+   la página se va por el camino de siempre. */
+const PRE_SIRVE = 15*60*1000;      // el cron lo rehace cada 5 min; 15 es margen de sobra
+let prePedido = null;
+function pedirPre(){
+  if(!prePedido) prePedido = fetch(LOOKUP+"?action=pre")
+    .then(r => r.json())
+    .then(j => { if(j && j.ok && j.busy) sembrarBusy(j.busy); return j; })
+    .catch(() => null);
+  return prePedido;
+}
+pedirPre();
+
+/* Recorta lo precalculado a las técnicas de ESTA vista (la maestra las quiere todas,
+   un enlace ?t=jahaira solo la suya). Si el servicio o el equipo no encajan, null. */
+function dePre(pre, calId, team){
+  if(!pre || !pre.ok || pre.sucio) return null;
+  if(pre.cal !== calId) return null;
+  if(Date.now() - (pre.at||0) > PRE_SIRVE) return null;
+  if(!team.every(u => (pre.team||[]).includes(u))) return null;
+  const dias = {};
+  for(const f in pre.dias){
+    dias[f] = {};
+    for(const u of team) if(pre.dias[f][u]) dias[f][u] = pre.dias[f][u];
+  }
+  return dias;
+}
+
+const refrescando = new Set();
+/* ⚠️ El refresco NO borra lo guardado antes de tener lo nuevo: si lo borrara, la técnica
+   se quedaría mirando una pantalla vacía mientras GHL contesta (bug medido: 13.9 s).
+   Se pide lo fresco aparte y solo al llegar se sustituye. */
+function refrescarPorDetras(calId, team){
+  const key = calId+"|"+team.join(",");
+  if(refrescando.has(key)) return;
+  refrescando.add(key);
+  traerHuecos(calId, team)
+    .then(dias => {
+      slotCache[key] = {at:Date.now(), dias};
+      guardarHuecos();
+      if(state.pintado) load();
+    })
+    .catch(()=>{})
+    .finally(() => refrescando.delete(key));
+}
+
+/* La consulta de verdad a GHL: 14 días por técnica, todas a la vez.
+   MEDIDO: 8 en paralelo desde el celular = 2 s y ningún 429. NO moverlo al Worker
+   (desde las IPs de Cloudflare este endpoint concreto tarda 7-10 s). */
+async function traerHuecos(calId, team){
+  const desde = prToday();
+  const a = Date.parse(desde+"T00:00:00"+OFFSET);
+  const b = Date.parse(addDays(desde, DIAS_TRAMO-1)+"T23:59:59"+OFFSET);
+  const listas = await Promise.all(team.map(async uid => {
+    const url = `https://backend.leadconnectorhq.com/calendars/${calId}/free-slots`
+              + `?startDate=${a}&endDate=${b}&timezone=${encodeURIComponent(TZ)}`
+              + `&sendSeatsPerSlot=false&userId=${uid}`;
+    const r = await qFetch(url);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  }));
+  const dias = {};
+  team.forEach((uid, i) => {
+    const j = listas[i] || {};
+    for(const f in j){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(f)) continue;
+      const sl = (j[f] && Array.isArray(j[f].slots)) ? j[f].slots : [];
+      (dias[f] = dias[f] || {})[uid] = sl.map(minOfDay).sort((x,y)=>x-y);
+    }
+  });
+  for(let k=0;k<DIAS_TRAMO;k++){ const f=addDays(desde,k); if(!dias[f]) dias[f]={}; }
+  return dias;
+}
+
+async function huecosEquipo(calId, iso, team){
+  const key = calId+"|"+team.join(",");
+  const hit = slotCache[key];
+  if(hit && hit.dias && hit.dias[iso] !== undefined){
+    const edad = Date.now() - hit.at;
+    if(edad < FRESCO) return filasDe(hit, iso, team);
+    if(edad < SIRVE){ refrescarPorDetras(calId, team); return filasDe(hit, iso, team); }
+  }
+
+  /* Este teléfono no tiene nada guardado (primera vez del día, o móvil nuevo):
+     antes de pagar los 16 s de GHL, mirar lo que el cron dejó hecho. */
+  const pre = await pedirPre();
+  const dias0 = dePre(pre, calId, team);
+  if(dias0 && dias0[iso] !== undefined){
+    /* Se guarda con la hora del PRECÁLCULO, no con la de ahora: así vale la misma escalera
+       de frescura de siempre y, si ya pasaron 2 min, se refresca por detrás como cualquier
+       otro dato viejo. Nunca se hace pasar por recién traído. */
+    slotCache[key] = {at: pre.at, dias: dias0};
+    guardarHuecos();
+    if(Date.now() - pre.at >= FRESCO) refrescarPorDetras(calId, team);
+    return filasDe({dias:dias0}, iso, team);
+  }
+
+  const dias = await traerHuecos(calId, team);
+
+  slotCache[key] = {at:Date.now(), dias};
+  guardarHuecos();
+  return team.map(uid => [uid, new Set((dias[iso] || {})[uid] || [])]);
+}
 async function slotsFor(calId, iso, userId){
   const key=calId+"|"+iso+"|"+(userId||"");
   const hit=slotCache[key];
@@ -612,25 +758,37 @@ async function slotsFor(calId, iso, userId){
 }
 const busyCache={};   // por fecha, 2 min — cambiar de día y volver no re-consulta
 function busyCached(iso){ const e=busyCache[iso]; return (e && Date.now()-e.at<120000) ? e.map : null; }
+/* Pasa el "ocupado" crudo del Worker a lo que dibuja la grilla. Lo usan fetchBusy y
+   el sembrado de lo precalculado, para que las etiquetas salgan en la PRIMERA pintada. */
+function mapBusy(crudo){
+  const m={};
+  for(const uid in crudo){
+    m[uid]=crudo[uid]
+      .map(x=>{
+        let w=(x.w||"").trim(), t=(x.t||"").trim();
+        if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
+        return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||"", id:x.id||""};
+      })
+      .filter(x=>x.b>x.a)
+      .sort((p,q)=>p.a-q.a);
+  }
+  return m;
+}
+/* Solo siembra días que aún no tengan nada: nunca pisa algo más reciente ya consultado. */
+function sembrarBusy(busy){
+  for(const iso in busy){
+    if(busyCache[iso]) continue;
+    try{ busyCache[iso]={at:Date.now(), map:mapBusy(busy[iso])}; }catch(e){}
+  }
+}
 async function fetchBusy(iso){
-  // citas y bloqueos del día por técnica (vía Apps Script; el token vive allá).
-  // Si el script aún no tiene action=busy, devuelve null y el rojo queda genérico.
+  // citas y bloqueos del día por técnica (vía el Worker; el token vive allá).
   const hit=busyCached(iso); if(hit) return hit;
   try{
     const r=await fetch(LOOKUP+"?action=busy&date="+iso);
     const j=await r.json();
     if(!j.ok || !j.busy) return null;
-    const m={};
-    for(const uid in j.busy){
-      m[uid]=j.busy[uid]
-        .map(x=>{
-          let w=(x.w||"").trim(), t=(x.t||"").trim();
-          if(t===w || t==="(No title)") t="";   // no repetir el nombre ni enseñar títulos vacíos
-          return {a:minOfDay(x.s), b:minOfDay(x.e), k:x.k, w, t, c:x.c||"", id:x.id||""};
-        })
-        .filter(x=>x.b>x.a)
-        .sort((p,q)=>p.a-q.a);
-    }
+    const m=mapBusy(j.busy);
     busyCache[iso]={at:Date.now(), map:m};
     return m;
   }catch(e){ return null; }
@@ -866,10 +1024,7 @@ async function load(){
     // huecos de cada servicio por técnica (entre servicios, pausa corta por el límite de consultas)
     const perSvc=[];                       // perSvc[k] = Map(uid -> Set de minutos libres)
     for(let k=0;k<svcs.length;k++){
-      const rows=await Promise.all(team.map(async uid=>{
-        const raw=await slotsFor(svcs[k].id,state.date,uid);
-        return [uid, new Set(raw.map(minOfDay))];
-      }));
+      const rows=await huecosEquipo(svcs[k].id, state.date, team);
       if(my!==state.reqId) return;
       perSvc.push(new Map(rows));
     }
@@ -912,6 +1067,7 @@ async function load(){
       setTimeout(()=>{ if(my===state.reqId) fetchBusy(state.date).then(b2=>{ if(b2 && my===state.reqId) drawBoard(cols, durM, b2); }); }, 4000);
     });
     state.loadedAt = Date.now();
+    state.pintado = true;   // ya hay algo en pantalla: un refresco por detrás puede redibujar
     const now=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date());
     $("stamp").textContent = (scanned ? `Hoy estaba lleno — mostrando ${longDate(state.date)} · ` : "") + `Consultado a las ${now}`;
   }catch(err){
