@@ -178,6 +178,10 @@
   .btn-go.danger{background:#E5484D; color:#fff}
   .busyblock.bloq{background:rgba(232,196,104,.09); border-color:rgba(232,196,104,.28); border-left:4px solid var(--lacquer)}
   .busyblock.bloq .who{color:var(--lacquer)}
+  /* hoy: lo que ya pasó, y lo libre que GHL todavía no ofrece por el aviso mínimo de 2 h */
+  .busyblock.pas{background:repeating-linear-gradient(135deg,rgba(126,118,99,.06) 0 6px,transparent 6px 12px); border-color:rgba(126,118,99,.14)}
+  .busyblock.avi{background:rgba(123,201,166,.06); border:1px dashed rgba(123,201,166,.6)}
+  .busyblock.avi .lb{color:var(--jade); opacity:1}
 
   /* barra de confirmación de reserva */
   .bookbar{
@@ -253,6 +257,8 @@
   .sw.r{background:rgba(229,72,77,.13); border:1px solid rgba(229,72,77,.45); border-left:3px solid #E5484D}
   .sw.b{background:rgba(232,196,104,.09); border:1px solid rgba(232,196,104,.5); border-left:3px solid var(--lacquer)}
   .sw.o{background:rgba(126,118,99,.09); border:1px solid rgba(126,118,99,.4)}
+  .sw.a{background:rgba(123,201,166,.06); border:1px dashed var(--jade)}
+  .sw.p{background:repeating-linear-gradient(135deg,rgba(126,118,99,.25) 0 3px,transparent 3px 6px); border:1px solid rgba(126,118,99,.25)}
   .sw.n{height:3px; border-radius:2px; background:var(--lacquer); box-shadow:0 0 6px rgba(232,196,104,.55)}
 
   /* ------- paneles (precios / consejos) ------- */
@@ -359,7 +365,9 @@
     <span class="lgi"><span class="sw g"></span> Disponible · toca para reservar</span>
     <span class="lgi"><span class="sw r"></span> Cita · toca para cancelar</span>
     <span class="lgi"><span class="sw b"></span> Bloqueado</span>
+    <span class="lgi"><span class="sw a"></span> Libre en menos de 2 h · no sale para reservar en línea</span>
     <span class="lgi"><span class="sw o"></span> Fuera de turno</span>
+    <span class="lgi"><span class="sw p"></span> Ya pasó</span>
     <span class="lgi"><span class="sw n" style="width:15px"></span> Ahora</span>
   </div>
   <footer>
@@ -865,18 +873,40 @@ function drawBoard(cols, durMin, busyMap){
     const blk=(a,b,cls,l1,l2,x)=>{
       const bh=(b-a)*pxmin; if(bh<6) return "";
       let inner="";
-      if(bh>=16 && l1) inner+= cls==="off" ? `<span class="lb">${l1}</span>` : `<span class="who">${esc(l1)}</span>`;
+      if(bh>=16 && l1) inner+= (cls==="off"||cls==="pas"||cls==="avi") ? `<span class="lb">${l1}</span>` : `<span class="who">${esc(l1)}</span>`;
       if(bh>=34 && l2) inner+=`<span class="what">${esc(l2)}</span>`;
       const attrs = (x&&x.eid) ? ` data-eid="${esc(x.eid)}" data-w="${esc(x.w)}" data-a="${x.a}" data-b="${x.b}" data-cn="${esc(x.cn)}" title="Toca para cancelar esta cita" role="button" tabindex="0"` : "";
       return `<div class="busyblock ${cls}"${attrs} style="top:${(a-lo)*pxmin}px;height:${bh}px">${inner}</div>`;
     };
+    /* Hoy, lo que no es hueco ni cita NO siempre es "fuera de turno":
+       - lo que ya pasó, GHL no lo devuelve como hueco;
+       - los calendarios tienen aviso mínimo de 2 h (desde el 2-sep), así que GHL tampoco ofrece
+         lo libre de las próximas 2 horas aunque la técnica esté trabajando.
+       El turno de cada una sale de sus huecos del mismo día de la semana que viene (c.turno). */
+    const aviso = Math.ceil((nowMin+120)/30)*30;          // primera hora que GHL deja reservar hoy
+    const trabajaHoy = c.ranges.length>0 || knowns.length>0;
+    const off=(a,b)=>{
+      if(!isToday) return blk(a,b,"off","Fuera de turno","");
+      let out="", x=a;
+      const corte=(hasta,cls,l)=>{ const y=Math.min(b,hasta); if(y>x){ out+=blk(x,y,cls,l,""); x=y; } };
+      corte(nowMin,"pas","Ya pasó");
+      if(trabajaHoy){
+        const t=c.turno;
+        const ini=t ? Math.max(nowMin,t.a) : nowMin;
+        const fin=t ? Math.min(aviso,t.b) : aviso;
+        if(x<ini) corte(ini,"off","Fuera de turno");
+        if(fin>ini) corte(fin,"avi","Libre · aviso 2 h");
+      }
+      if(x<b) out+=blk(x,b,"off","Fuera de turno","");
+      return out;
+    };
     for(const [a,b] of busy){
-      if(!knowns.length){ html+=blk(a,b,"off", busyMap?"Fuera de turno":"Ocupado",""); continue; }
+      if(!knowns.length){ html+= busyMap ? off(a,b) : blk(a,b,"off","Ocupado",""); continue; }
       let cur=a;
       for(const k of knowns){
         const ka=Math.max(k.a,a), kb=Math.min(k.b,b);
         if(kb<=cur || ka>=b) continue;
-        if(ka>cur) html+=blk(cur,ka,"off","Fuera de turno","");
+        if(ka>cur) html+=off(cur,ka);
         html+=blk(Math.max(ka,cur), kb,
           k.k==="bloqueo"?"bloq":"cita",
           k.k==="bloqueo"?(k.t||k.w||"Bloqueado"):(k.w||k.t||"Cita"),
@@ -884,7 +914,7 @@ function drawBoard(cols, durMin, busyMap){
           (k.k==="cita"&&k.id)?{eid:k.id, w:k.w||k.t||"Clienta", a:k.a, b:k.b, cn:c.name}:null);
         cur=Math.max(cur,kb);
       }
-      if(cur<b) html+=blk(cur,b,"off","Fuera de turno","");
+      if(cur<b) html+=off(cur,b);
     }
     if(isToday && nowMin>=lo && nowMin<=hi) html+=`<div class="now" style="top:${(nowMin-lo)*pxmin}px"></div>`;
     for(let ri=0; ri<c.ranges.length; ri++){
@@ -1037,11 +1067,20 @@ async function load(){
       const np=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
       nowM=(+np.slice(0,2))*60+(+np.slice(3,5));
     }
+    /* Turno de cada técnica para este día de la semana: sus huecos del mismo día de la semana
+       que viene (ya vienen dentro de los 14 días pedidos). El de hoy no se puede leer de hoy:
+       GHL no devuelve lo que ya pasó ni lo que cae dentro del aviso de 2 h. */
+    const tramo = slotCache[svcs[0].id+"|"+team.join(",")];
+    const igual = addDays(state.date, 7);
+    const turnoDe = uid => {
+      const m = tramo && tramo.dias && tramo.dias[igual] && tramo.dias[igual][uid];
+      return (m && m.length) ? {a:Math.min(...m), b:Math.max(...m)+svcs[0].d} : null;
+    };
     const cols=team.map(uid=>{
       const first=[...(perSvc[0].get(uid)||[])].sort((a,b)=>a-b);
       const starts=first.filter(t=>svcs.every((s,k)=>perSvc[k].get(uid).has(t+offs[k])))
                         .filter(t=>!hoy || t>=nowM);
-      return { uid, name:DATA.staff[uid]||"Técnica", slots:starts, ranges:toRangesM(starts) };
+      return { uid, name:DATA.staff[uid]||"Técnica", slots:starts, ranges:toRangesM(starts), turno: hoy ? turnoDe(uid) : null };
     });
     if(my!==state.reqId) return;
     const total = cols.reduce((n,c)=>n+c.ranges.reduce((x,r)=>x+r.n,0),0);
