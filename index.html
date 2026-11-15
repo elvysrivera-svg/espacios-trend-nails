@@ -322,7 +322,7 @@
     <div class="field" id="cfield">
       <label class="lbl" for="cq">Clienta (opcional — pre-llena la reserva)</label>
       <div id="cPickerBox">
-        <input type="search" id="cq" placeholder="Nombre o teléfono de la clienta…" autocomplete="off">
+        <input type="search" id="cq" placeholder="Teléfono de la clienta (10 dígitos)…" inputmode="tel" autocomplete="off">
         <ul class="options" id="cOptions" hidden role="listbox" aria-label="Clientas"></ul>
         <div class="options" id="cNewForm" hidden>
           <div class="nf">
@@ -421,8 +421,6 @@ const WIDGET = id => {
   const c = state.clienta;
   if(c){
     u += `&first_name=${encodeURIComponent(c.fn||"")}&last_name=${encodeURIComponent(c.ln||"")}`;
-    if(c.em) u += `&email=${encodeURIComponent(c.em)}`;
-    if(c.ph) u += `&phone=${encodeURIComponent(c.ph)}`;
   }
   return u;
 };
@@ -1141,9 +1139,15 @@ else{
   let cTimer=null;
   $("cq").addEventListener("input",e=>{
     clearTimeout(cTimer);
-    const v=e.target.value.trim();
-    if(v.length<3){ $("cOptions").hidden=true; return; }
-    cTimer=setTimeout(()=>searchClienta(v),400);
+    // 14-nov-2026: solo con el número completo. Por nombre o con pedazos no se busca.
+    const v=e.target.value.trim(), ul=$("cOptions");
+    let d=v.replace(/\D/g,""); if(d.length===11 && d[0]==="1") d=d.slice(1);
+    if(!v){ ul.hidden=true; return; }
+    if(d.length!==10 || /[a-z]/i.test(v)){
+      ul.innerHTML=`<li class="empty-opt">Escribe el número completo de la clienta, con el área (10 dígitos).</li>`;
+      appendNewOption(ul); ul.hidden=false; return;
+    }
+    cTimer=setTimeout(()=>searchClienta(d),300);
   });
   $("cClear").addEventListener("click",()=>{
     state.clienta=null; $("cChosen").hidden=true; $("cPickerBox").hidden=false;
@@ -1178,6 +1182,7 @@ async function searchClienta(q, reintento){
   try{
     const j=await fetchHedged(LOOKUP+"?q="+encodeURIComponent(q));
     if(my!==cReqId) return;   // ya hay una búsqueda más nueva — no pisar su resultado
+    if(j.error && !(j.matches||[]).length){ ul.innerHTML=`<li class="empty-opt">${j.error}</li>`; appendNewOption(ul); return; }
     cCache[q]=j.matches||[];
     renderClientas(cCache[q]);
   }catch(e){
@@ -1196,7 +1201,7 @@ function renderClientas(list){
   for(const m of list){
     const li=document.createElement("li"); li.setAttribute("role","option");
     const b=document.createElement("button"); b.type="button";
-    b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${m.ph||"sin teléfono"}${m.em?" · "+m.em:""}</span>`;
+    b.innerHTML=`${((m.fn||"")+" "+(m.ln||"")).trim()||"(sin nombre)"}<span class="dur">${m.ph||"sin teléfono"}</span>`;
     b.addEventListener("click",()=>{
       state.clienta=m;
       $("cPickerBox").hidden=true; $("cChosen").hidden=false;
@@ -1241,7 +1246,7 @@ async function saveNewClienta(){
       `&ph=${encodeURIComponent(ph)}&em=${encodeURIComponent(em)}`;
     const r=await fetch(u); const j=await r.json();
     if(j.ok){
-      state.clienta={id:j.id, fn:j.fn, ln:j.ln, ph:j.ph, em:j.em};
+      state.clienta={id:j.id, fn:j.fn, ln:j.ln, ph:j.ph};
       for(const k in cCache) delete cCache[k];   // que las próximas búsquedas la encuentren
       $("cNewForm").hidden=true; $("cPickerBox").hidden=true; $("cChosen").hidden=false;
       $("cName").textContent=((j.fn||"")+" "+(j.ln||"")).trim()+(j.nuevo===false?" · ya existía, usando su ficha":"");
